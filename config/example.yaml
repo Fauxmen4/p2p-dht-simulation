@@ -1,0 +1,11 @@
+network:
+  bootsrap:
+    nodes_count: 4
+    connections_count: 1
+
+  nodes_count: 20
+
+kademlia:
+  bucket_size: 20
+  k: 20
+  alpha: 6

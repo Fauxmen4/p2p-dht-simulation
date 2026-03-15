@@ -1,0 +1,63 @@
+package pid
+
+import (
+	"crypto/sha1"
+	"math/bits"
+
+	"github.com/google/uuid"
+)
+
+const (
+	// TODO: set it dynamically
+	IdBitSize = 160 // number of buckets (because SHA1 is used)
+)
+
+type ID []byte
+
+func XOR(a, b []byte) []byte {
+	if len(a) != len(b) {
+		panic("to calculate xor byte slices should be of equal size")
+	}
+	out := make([]byte, len(a))
+	for i := range a {
+		out[i] = a[i] ^ b[i]
+	}
+	return out
+}
+
+func ZeroPrefixLen(id []byte) int {
+	for i, b := range id {
+		if b != 0 {
+			return i*8 + bits.LeadingZeros8(uint8(b))
+		}
+	}
+	return len(id) * 8
+}
+
+func CommonPrefixLen(a, b ID) int {
+	return ZeroPrefixLen(XOR(a, b))
+}
+
+func Less(id1, id2 ID) bool {
+	equalBytes := 0
+	for i, b1 := range id1 {
+		if b1 > id2[i] {
+			return false
+		}
+		if b1 == id2[i] {
+			equalBytes++
+		}
+	}
+	return equalBytes != len(id1)
+}
+
+type PeerID string
+
+func Generate() PeerID {
+	return PeerID(uuid.NewString())
+}
+
+func ConvertPeerID(id PeerID) ID {
+	hash := sha1.Sum([]byte(id))
+	return hash[:]
+}
