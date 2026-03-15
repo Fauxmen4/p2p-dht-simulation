@@ -24,21 +24,21 @@ func NewBucket() *Bucket {
 	return b
 }
 
-func (b *Bucket) PushFront(p *PeerInfo) {
+func (b *Bucket) PushFront(p PeerInfo) {
 	b.list.PushFront(p)
 }
 
-func (b *Bucket) PushBack(p *PeerInfo) {
+func (b *Bucket) PushBack(p PeerInfo) {
 	b.list.PushBack(p)
 }
 
-func (b *Bucket) Get(id pid.PeerID) *PeerInfo {
+func (b *Bucket) Get(id pid.PeerID) PeerInfo {
 	for e := b.list.Front(); e != nil; e = e.Next() {
 		if e.Value.(*PeerInfo).Id == id {
-			return e.Value.(*PeerInfo)
+			return e.Value.(PeerInfo)
 		}
 	}
-	return nil
+	return PeerInfo{}
 }
 
 func (b *Bucket) Len() int {
@@ -47,7 +47,7 @@ func (b *Bucket) Len() int {
 
 func (b *Bucket) Remove(id pid.PeerID) bool {
 	for e := b.list.Front(); e != nil; e = e.Next() {
-		if e.Value.(*PeerInfo).Id == id {
+		if e.Value.(PeerInfo).Id == id {
 			b.list.Remove(e)
 			return true
 		}
@@ -55,10 +55,10 @@ func (b *Bucket) Remove(id pid.PeerID) bool {
 	return false
 }
 
-func (b *Bucket) Peers() []*PeerInfo {
-	peers := make([]*PeerInfo, 0, b.Len())
+func (b *Bucket) Peers() []PeerInfo {
+	peers := make([]PeerInfo, 0, b.Len())
 	for e := b.list.Front(); e != nil; e = e.Next() {
-		p := e.Value.(*PeerInfo)
+		p := e.Value.(PeerInfo)
 		peers = append(peers, p)
 	}
 	return peers
@@ -67,7 +67,7 @@ func (b *Bucket) Peers() []*PeerInfo {
 func (b *Bucket) PeerIDs() []pid.PeerID {
 	peerIDs := make([]pid.PeerID, 0, b.Len())
 	for e := b.list.Front(); e != nil; e = e.Next() {
-		p := e.Value.(*PeerInfo)
+		p := e.Value.(PeerInfo)
 		peerIDs = append(peerIDs, p.Id)
 	}
 	return peerIDs

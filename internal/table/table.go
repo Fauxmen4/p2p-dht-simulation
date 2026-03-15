@@ -39,12 +39,12 @@ func (rt *RoutingTable) Add(p pid.PeerID, addr addr.Addr) bool {
 	bucket := rt.buckets[index]
 
 	// check if peer is already in table
-	if peerInfo := bucket.Get(p); peerInfo != nil {
+	if peerInfo := bucket.Get(p); peerInfo.Id != "" {
 		return false
 	}
 
 	if bucket.Len() < rt.bucketSize {
-		bucket.PushBack(&PeerInfo{
+		bucket.PushBack(PeerInfo{
 			Id:    p,
 			dhtID: pid.ConvertPeerID(p),
 			Addr:  addr,
@@ -105,7 +105,7 @@ func (rt *RoutingTable) Print() {
 		}
 		fmt.Printf("Bucket: %d. Length = %d\n", i, b.Len())
 		for e := b.list.Front(); e != nil; e = e.Next() {
-			peerInfo := e.Value.(*PeerInfo)
+			peerInfo := e.Value.(PeerInfo)
 			fmt.Printf("- %s (%s)\n", peerInfo.Id, peerInfo.Addr)
 		}
 	}
