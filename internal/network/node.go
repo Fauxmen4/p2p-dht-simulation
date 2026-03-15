@@ -54,6 +54,10 @@ func (n *Network) NewNode(nodeID pid.PeerID, store storage) *Node {
 	return node
 }
 
+func (n *Node) ID() pid.PeerID {
+	return n.id
+}
+
 // Run make node listening for inbound messages through the channel and handle them in sync mode (one by one)
 // TODO: add context.Context?
 func (n *Node) Run() {

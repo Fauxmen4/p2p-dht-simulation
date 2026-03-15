@@ -15,8 +15,10 @@ type Network struct {
 	bootstrapNodes []*Node
 }
 
-func New() *Network {
+func New(cfg config.Config) *Network {
 	net := &Network{
+		config: cfg,
+
 		nodes:          make(map[addr.Addr]*Node),
 		bootstrapNodes: make([]*Node, 0),
 	}
@@ -25,7 +27,20 @@ func New() *Network {
 }
 
 func (n *Network) AddBootstrapNodes(nodes ...*Node) {
+	for _, node := range nodes {
+		n.nodes[node.addr] = node
+	}
 	n.bootstrapNodes = append(n.bootstrapNodes, nodes...)
+}
+
+// StartNetwork runs all bootstrap nodes in separate goroutines
+// ! CONCURRENT
+func (n *Network) StartNetwork() {
+	for i := range n.bootstrapNodes {
+		go func() {
+			n.bootstrapNodes[i].Run()
+		}()
+	}
 }
 
 // Send sends message from one node to other in non-blocking way

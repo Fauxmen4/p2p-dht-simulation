@@ -1,4 +1,4 @@
-package main
+package tests
 
 import (
 	"my-kad-dht/config"
@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-func main() {
+func Test_NetworkBackbone() {
 	config := config.Config{
 		Network: config.Network{},
 		Kademlia: config.Kademlia{

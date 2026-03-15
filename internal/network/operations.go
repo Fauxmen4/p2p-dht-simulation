@@ -5,6 +5,7 @@ import (
 	pid "my-kad-dht/internal/id"
 	"my-kad-dht/internal/message"
 	rt "my-kad-dht/internal/table"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -43,6 +44,7 @@ func (n *Node) NodeLookup(targetID pid.PeerID, k int) []rt.PeerInfo {
 	}
 
 	for len(waitlist) != 0 {
+
 		// send alpha (or less) RPC FIND_NODE requests
 		for _, nodeInfo := range waitlist {
 			queried[nodeInfo.Id] = struct{}{}
@@ -51,9 +53,17 @@ func (n *Node) NodeLookup(targetID pid.PeerID, k int) []rt.PeerInfo {
 
 		// results from all RPCs gather to reduced,
 		// than they 1. deduplicated, 2. sorted by distance to target ID, 3. choose alpha (or less) non-queried before
-
+		outer:
 		for range len(waitlist) {
-			resp := (<-n.inputCh).(*message.Response)
+			//? Here I caught deadlock, so I made reading with timeout
+			//! TEMPORARY FIX
+			var resp *message.Response
+			select {
+			case msg := (<-n.inputCh):
+				resp = msg.(*message.Response)
+			case <-time.After(3 * time.Millisecond):
+				break outer
+			}
 
 			// add fresh data to routing table
 			for _, peerInfo := range resp.Body.NearestNodes {

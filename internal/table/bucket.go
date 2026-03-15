@@ -34,7 +34,7 @@ func (b *Bucket) PushBack(p PeerInfo) {
 
 func (b *Bucket) Get(id pid.PeerID) PeerInfo {
 	for e := b.list.Front(); e != nil; e = e.Next() {
-		if e.Value.(*PeerInfo).Id == id {
+		if e.Value.(PeerInfo).Id == id {
 			return e.Value.(PeerInfo)
 		}
 	}
