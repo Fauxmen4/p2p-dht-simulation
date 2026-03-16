@@ -122,3 +122,15 @@ func (rt *RoutingTable) bucketIndex(p pid.PeerID) int {
 	}
 	return bucketID
 }
+
+// ReturnAllIds returns a list of ids from every node's kbucket
+func (rt *RoutingTable) ReturnAllIds() []pid.PeerID {
+	ids := make([]pid.PeerID, 0)
+	for _, b := range rt.buckets {
+		for e := b.list.Front(); e != nil; e = e.Next() {
+			ids = append(ids, e.Value.(PeerInfo).Id)
+		}
+	}
+
+	return ids
+}
