@@ -3,11 +3,15 @@ package network
 import (
 	"encoding/json"
 	"fmt"
+	"log"
+	"os"
+	"strings"
+	"time"
 )
 
 // DumpTopology creates .json with network description in order to visualize it with vis.js.
 // TODO: optimize it as hard as i can
-func (n *Network) DumpTopology() {
+func (n *Network) DumpTopology(outputStream string) {
 	data := make(map[string]any, 0)
 
 	set := make(map[string]struct{})
@@ -35,13 +39,34 @@ func (n *Network) DumpTopology() {
 			if _, ok := added[edge]; !ok {
 				edges = append(edges, edge)
 				added[edge] = struct{}{}
-                added[[2]string{edge[1], edge[0]}] = struct{}{}
+				added[[2]string{edge[1], edge[0]}] = struct{}{}
 			}
 		}
 	}
 	data["edges"] = edges
 
-	dump, err := json.Marshal(data)
-	fmt.Println(err)
-	fmt.Println(string(dump))
+	out := os.Stdout
+	if strings.ToLower(outputStream) != "stdout" {
+		current := time.Now()
+		dumpName := fmt.Sprintf("%v-%v-%v.json", current.Hour(), current.Minute(), current.Second())
+		file, err := os.OpenFile(dumpName, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+		if err != nil {
+			log.Printf("failed to create dump file: %v", err.Error())
+		}
+		out = file
+	}
+
+	dump, err := json.MarshalIndent(data, "", "  ")
+	if err != nil {
+		log.Printf("failed to write network dump: %v", err.Error())
+	}
+	out.Write(dump)
+
+	// fmt.Println(err)
+	// fmt.Printf(string(dump))
+}
+
+func (n *Node) DumpStorage() {
+	fmt.Printf("Storage of node: %s", n.ID())
+	n.KVStorage.Print()
 }

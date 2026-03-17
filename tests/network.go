@@ -58,5 +58,5 @@ func Test_NetworkBackbone() {
 		node.RoutingTable.Print()
 	}
 
-	net.DumpTopology()
+	net.DumpTopology("")
 }

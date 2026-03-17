@@ -21,6 +21,13 @@ type Network struct {
 	} `yaml:"bootstrap"`
 
 	NodesCount int `yaml:"nodes_count"`
+
+	Workload struct {
+		// "client" nodes that gonna publish and retrive records
+		nodes int `yaml:"nodes"`
+		// number of key-pairs to be published by "client" nodes
+		records int `yaml:"records"`
+	} `yaml:"workload"`
 }
 
 type Kademlia struct {

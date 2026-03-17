@@ -53,7 +53,7 @@ func (n *Node) NodeLookup(targetID pid.PeerID, k int) []rt.PeerInfo {
 
 		// results from all RPCs gather to reduced,
 		// than they 1. deduplicated, 2. sorted by distance to target ID, 3. choose alpha (or less) non-queried before
-		outer:
+	outer:
 		for range len(waitlist) {
 			//? Here I caught deadlock, so I made reading with timeout
 			//! TEMPORARY FIX
@@ -103,4 +103,27 @@ func (n *Node) Join(id pid.PeerID, addr addr.Addr) {
 	// During lookup kbuckets are filled with intermediate results.
 	// TODO: maybe we could also add final result to rt
 	_ = n.NodeLookup(id, n.k)
+}
+
+func (n *Node) sendStore(key, value string, to addr.Addr) {
+	msg := &message.Request{
+		ID:   message.MsgID(uuid.NewString()),
+		Type: message.FindNodeType,
+
+		Body: message.Body{Key: key, InputValue: value},
+
+		To:     to,
+		From:   n.addr,
+		FromID: n.id,
+	}
+
+	n.net.SendBlocking(msg)
+}
+
+func (n *Node) Store(key, value string) {
+	targetID := pid.PeerID(key)
+	candidates := n.NodeLookup(targetID, n.k)
+	for _, candidate := range candidates {
+		n.sendStore(key, value, candidate.Addr)
+	}
 }

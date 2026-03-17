@@ -1,5 +1,7 @@
 package storage
 
+import "fmt"
+
 type Storage struct {
 	data map[string]string
 }
@@ -21,4 +23,12 @@ func (s *Storage) Get(key string) (string, bool) {
 
 func (s *Storage) Delete(key string) {
 	delete(s.data, key)
+}
+
+// Print prints all (key, value) pairs from storage
+func (s *Storage) Print() {
+	fmt.Printf("Number of records: %d\n", len(s.data))
+	for key, value := range s.data {
+		fmt.Printf("\t- %s:%s\n", key, value)
+	}
 }

@@ -11,6 +11,7 @@ type storage interface {
 	Set(key, value string)
 	Get(key string) (string, bool)
 	Delete(key string)
+	Print()
 }
 
 type Node struct {
