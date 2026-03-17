@@ -108,7 +108,7 @@ func (n *Node) Join(id pid.PeerID, addr addr.Addr) {
 func (n *Node) sendStore(key, value string, to addr.Addr) {
 	msg := &message.Request{
 		ID:   message.MsgID(uuid.NewString()),
-		Type: message.FindNodeType,
+		Type: message.StoreType,
 
 		Body: message.Body{Key: key, InputValue: value},
 

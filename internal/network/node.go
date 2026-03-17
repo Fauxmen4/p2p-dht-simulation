@@ -68,7 +68,9 @@ func (n *Node) Run() {
 			// TODO: invalid message data
 		}
 		resp := n.Handle(req)
-		n.SendResponse(resp)
+		if resp != nil {
+			n.SendResponse(resp)
+		}
 	}
 
 }
@@ -90,6 +92,7 @@ func (n *Node) Handle(req *msg.Request) *msg.Response {
 
 	case msg.StoreType:
 		n.store(req.Body.Key, req.Body.InputValue)
+		return nil
 
 	case msg.FindNodeType:
 		peersInfo := n.findNode(req.Body.ID)
