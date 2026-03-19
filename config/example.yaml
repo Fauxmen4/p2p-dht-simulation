@@ -3,7 +3,9 @@ network:
     nodes_count: 4
     connections_count: 1
 
-  nodes_count: 20
+  nodes_count:
+    total: 100
+    active: 10
 
 kademlia:
   bucket_size: 20

@@ -5,6 +5,7 @@ import (
 	pid "my-kad-dht/internal/id"
 	"my-kad-dht/internal/message"
 	rt "my-kad-dht/internal/table"
+	"my-kad-dht/internal/utils"
 	"time"
 
 	"github.com/google/uuid"
@@ -105,6 +106,24 @@ func (n *Node) Join(id pid.PeerID, addr addr.Addr) {
 	_ = n.NodeLookup(id, n.k)
 }
 
+const (
+	RandStrLength = 8
+)
+
+func (n *Node) StoreRandStr() (string, string) {
+	key, value := utils.RandString(6), utils.RandString(6)
+	n.Store(key, value)
+	return key, value
+}
+
+func (n *Node) Store(key, value string) {
+	targetID := pid.PeerID(key)
+	candidates := n.NodeLookup(targetID, n.k)
+	for _, candidate := range candidates {
+		n.sendStore(key, value, candidate.Addr)
+	}
+}
+
 func (n *Node) sendStore(key, value string, to addr.Addr) {
 	msg := &message.Request{
 		ID:   message.MsgID(uuid.NewString()),
@@ -120,10 +139,4 @@ func (n *Node) sendStore(key, value string, to addr.Addr) {
 	n.net.SendBlocking(msg)
 }
 
-func (n *Node) Store(key, value string) {
-	targetID := pid.PeerID(key)
-	candidates := n.NodeLookup(targetID, n.k)
-	for _, candidate := range candidates {
-		n.sendStore(key, value, candidate.Addr)
-	}
-}
+// func (n *Node) Get(key string) (string, bool) {}

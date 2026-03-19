@@ -20,7 +20,12 @@ type Network struct {
 		connections_count int `yaml:"connections_count"`
 	} `yaml:"bootstrap"`
 
-	NodesCount int `yaml:"nodes_count"`
+	NodesCount struct {
+		// nodes that act as usual "servers"
+		common int
+		// number of nodes which spread and retrieve (key, value) records across the network
+		active int
+	} `yaml:"nodes_count"`
 
 	Workload struct {
 		// "client" nodes that gonna publish and retrive records

@@ -1,4 +1,4 @@
-package main
+package tests
 
 import (
 	"my-kad-dht/config"
@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-func main() {
+func Test_AddRecords() {
 	config := config.Config{
 		Network: config.Network{},
 		Kademlia: config.Kademlia{
@@ -58,8 +58,6 @@ func main() {
 	}
 
 	// TESTING
-
-	// Store
 	clientNodes := make([]*network.Node, clientNodesCount)
 	for i := range len(clientNodes) {
 		clientNodes[i] = net.NewNode(
@@ -68,14 +66,11 @@ func main() {
 		)
 	}
 
-	keys := make([]string, 0, recordRounds*clientNodesCount)
-
 	for _, node := range clientNodes {
 		net.Join(node)
 
 		for range recordRounds {
-			key, _ := node.StoreRandStr()
-			keys = append(keys, key)
+			node.StoreRandStr()
 		}
 
 		go func() {
@@ -85,6 +80,7 @@ func main() {
 
 	time.Sleep(5 * time.Second)
 
-	// Retrieve
-
+	for _, node := range nodes {
+		node.KVStorage.Print()
+	}
 }
