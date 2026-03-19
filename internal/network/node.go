@@ -4,6 +4,7 @@ import (
 	"my-kad-dht/internal/addr"
 	pid "my-kad-dht/internal/id"
 	msg "my-kad-dht/internal/message"
+	"my-kad-dht/internal/metrics"
 	rt "my-kad-dht/internal/table"
 )
 
@@ -34,10 +35,12 @@ type Node struct {
 	// All peers can be accessed through address as in real life.
 	net *Network
 
-	KVStorage storage
-
 	// Mailbox for inbound messages of types network.Request, network.Response.
 	inputCh chan msg.Message
+
+	KVStorage storage
+
+	Metrics *metrics.Storage
 }
 
 func (n *Network) NewNode(nodeID pid.PeerID, store storage) *Node {
@@ -48,8 +51,9 @@ func (n *Network) NewNode(nodeID pid.PeerID, store storage) *Node {
 		k:            n.config.Kademlia.K,
 		alpha:        n.config.Kademlia.Alpha,
 		net:          n,
-		KVStorage:    store,
 		inputCh:      make(chan msg.Message),
+		KVStorage:    store,
+		Metrics:      metrics.NewStorage(),
 	}
 
 	return node
@@ -68,6 +72,9 @@ func (n *Node) Run() {
 			// TODO: invalid message data
 		}
 		resp := n.Handle(req)
+
+		n.Metrics.NewRPC()
+
 		if resp != nil {
 			n.SendResponse(resp)
 		}
@@ -92,7 +99,7 @@ func (n *Node) Handle(req *msg.Request) *msg.Response {
 
 	case msg.StoreType:
 		n.store(req.Body.Key, req.Body.InputValue)
-		return nil
+		resp = nil
 
 	case msg.FindNodeType:
 		peersInfo := n.findNode(req.Body.ID)
