@@ -32,18 +32,16 @@ type Network struct {
 	} `yaml:"workload"`
 }
 
+// Bootstrap 
 type Bootstrap struct {
-	// How many bootstrap nodes should be in network
 	NodesCount        int `yaml:"nodes_count"`
-	// 
 	Connections_count int `yaml:"connections_count"`
 }
 
 type Kademlia struct {
-	BucketSize int `yaml:"bucket_size"` //? I can't understand is it different from K?
-	K          int `yaml:"k"`
-	Alpha      int `yaml:"alpha"`
-	Beta       int `yaml:"beta"`
+	K     int `yaml:"k"`     // bucket size
+	Alpha int `yaml:"alpha"` // number of nodes to ask per hop
+	Beta  int `yaml:"beta"`  // number of contacts to return after FIND_NODE, FIND_VALUE
 }
 
 func LoadConfig() *Config {

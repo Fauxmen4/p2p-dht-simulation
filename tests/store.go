@@ -12,7 +12,6 @@ func Test_AddRecords() {
 	config := config.Config{
 		Network: config.Network{},
 		Kademlia: config.Kademlia{
-			BucketSize: 20,
 			K:          20,
 			Alpha:      3,
 		},

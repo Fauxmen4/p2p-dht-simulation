@@ -2,6 +2,7 @@ package storage
 
 import "fmt"
 
+// Storage represents simple in-memory storage
 type Storage struct {
 	data map[string]string
 }

@@ -12,8 +12,7 @@ func Test_NetworkBackbone() {
 	config := config.Config{
 		Network: config.Network{},
 		Kademlia: config.Kademlia{
-			BucketSize: 20,
-			K:          20,
+			K:          10,
 			Alpha:      3,
 		},
 	}

@@ -8,17 +8,16 @@ import (
 )
 
 type Network struct {
-	config config.Config
-
-	nodes map[addr.Addr]*Node
-
-	bootstrapNodes []*Node
+	config         config.Config       // configuration of everything
+	nodes          map[addr.Addr]*Node // map with all nodes, used to address messages from one node to another
+	bootstrapNodes []*Node             // nodes for joining the network
 }
 
+// New is network constructor.
+// Returns empty network (no nodes), only config is added.
 func New(cfg config.Config) *Network {
 	net := &Network{
 		config: cfg,
-
 		nodes:          make(map[addr.Addr]*Node),
 		bootstrapNodes: make([]*Node, 0),
 	}

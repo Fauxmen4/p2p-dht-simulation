@@ -15,7 +15,6 @@ func main() {
 			},
 		},
 		Kademlia: config.Kademlia{
-			BucketSize: 10,
 			K:          10,
 			Alpha:      3,
 		},

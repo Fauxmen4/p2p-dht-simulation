@@ -17,7 +17,6 @@ func Test_RandomWorkload() {
 			},
 		},
 		Kademlia: config.Kademlia{
-			BucketSize: 10,
 			K:          10,
 			Alpha:      2,
 		},

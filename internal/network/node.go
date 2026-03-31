@@ -25,13 +25,13 @@ type Node struct {
 	RoutingTable rt.RoutingTable
 
 	// Number of nearest contacts to return for FindNode, FindValue.
-	// In papers usually the same as bucketSize (also defined as k).
+	// Also in papers it defines bucket size.
 	k int
 
 	// Number of async requests to send in parallel during node lookup operation
 	alpha int
 
-	// Network simulation. It stores mapping
+	// Network simulation. It stores mapping: address->node.
 	// All peers can be accessed through address as in real life.
 	net *Network
 
@@ -47,7 +47,7 @@ func (n *Network) NewNode(nodeID pid.PeerID, store storage) *Node {
 	node := &Node{
 		id:           nodeID,
 		addr:         addr.GenerateAddr(),
-		RoutingTable: *rt.NewRoutingTable(20, nodeID),
+		RoutingTable: *rt.NewRoutingTable(n.config.Kademlia.K, nodeID),
 		k:            n.config.Kademlia.K,
 		alpha:        n.config.Kademlia.Alpha,
 		net:          n,
