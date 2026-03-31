@@ -9,7 +9,9 @@ import (
 
 const (
 	// TODO: set it dynamically
-	IdBitSize = 160 // number of buckets (because SHA1 is used)
+	SHA256BitSize  = 256
+	SHA1BitSize    = 160 // number of buckets (because SHA1 is used)
+	Blake2bBitSize = 128
 )
 
 type ID []byte

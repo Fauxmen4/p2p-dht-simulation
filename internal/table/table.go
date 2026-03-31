@@ -16,7 +16,7 @@ type RoutingTable struct {
 }
 
 func NewRoutingTable(bucketSize int, selfID pid.PeerID) *RoutingTable {
-	buckets := make([]*Bucket, pid.IdBitSize)
+	buckets := make([]*Bucket, pid.SHA1BitSize)
 	for i := range buckets {
 		buckets[i] = NewBucket()
 	}
