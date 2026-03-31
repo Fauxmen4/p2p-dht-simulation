@@ -79,7 +79,7 @@ func (n *Node) NodeLookup(targetID pid.PeerID, k int) []rt.PeerInfo {
 			}
 		}
 
-		reduced = rt.SortClosestPeers(reduced, pid.ConvertPeerID(targetID))
+		reduced = rt.SortClosestPeers(reduced, pid.ConvertPeerID(targetID, n.bitSize))
 		waitlist = make([]rt.PeerInfo, 0, n.alpha)
 		for _, nodeInfo := range reduced {
 			if _, ok := queried[nodeInfo.Id]; !ok {
@@ -201,7 +201,7 @@ func (n *Node) keyLookup(key string) (string, bool, int) {
 			}
 		}
 
-		reduced = rt.SortClosestPeers(reduced, pid.ConvertPeerID(targetID))
+		reduced = rt.SortClosestPeers(reduced, pid.ConvertPeerID(targetID, n.bitSize))
 		waitlist = make([]rt.PeerInfo, 0, n.alpha)
 		for _, nodeInfo := range reduced {
 			if _, ok := queried[nodeInfo.Id]; !ok {

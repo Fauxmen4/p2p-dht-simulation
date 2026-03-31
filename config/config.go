@@ -32,16 +32,16 @@ type Network struct {
 	} `yaml:"workload"`
 }
 
-// Bootstrap 
 type Bootstrap struct {
 	NodesCount        int `yaml:"nodes_count"`
 	Connections_count int `yaml:"connections_count"`
 }
 
 type Kademlia struct {
-	K     int `yaml:"k"`     // bucket size
-	Alpha int `yaml:"alpha"` // number of nodes to ask per hop
-	Beta  int `yaml:"beta"`  // number of contacts to return after FIND_NODE, FIND_VALUE
+	BitSize int `yaml:"bit_size" env-default:"160"` // number of bits in ID
+	K       int `yaml:"k"`                          // bucket size
+	Alpha   int `yaml:"alpha"`                      // number of nodes to ask per hop
+	Beta    int `yaml:"beta"`                       // number of contacts to return after FIND_NODE, FIND_VALUE
 }
 
 func LoadConfig() *Config {

@@ -16,20 +16,16 @@ type storage interface {
 }
 
 type Node struct {
-	id pid.PeerID
+	// Node properties
+	id           pid.PeerID
+	addr         addr.Addr       // network address
+	RoutingTable rt.RoutingTable // slice of kbuckets
 
-	// network address
-	addr addr.Addr
-
-	// slice of kbuckets
-	RoutingTable rt.RoutingTable
-
-	// Number of nearest contacts to return for FindNode, FindValue.
-	// Also in papers it defines bucket size.
-	k int
-
-	// Number of async requests to send in parallel during node lookup operation
-	alpha int
+	// Kademlia parameters
+	bitSize int // number of bits in ID
+	k       int // bucket size
+	alpha   int // number of async requests to send in parallel during node lookup
+	beta    int // number of contacts to return in response for FindNode, FindValue
 
 	// Network simulation. It stores mapping: address->node.
 	// All peers can be accessed through address as in real life.
@@ -47,13 +43,17 @@ func (n *Network) NewNode(nodeID pid.PeerID, store storage) *Node {
 	node := &Node{
 		id:           nodeID,
 		addr:         addr.GenerateAddr(),
-		RoutingTable: *rt.NewRoutingTable(n.config.Kademlia.K, nodeID),
-		k:            n.config.Kademlia.K,
-		alpha:        n.config.Kademlia.Alpha,
-		net:          n,
-		inputCh:      make(chan msg.Message),
-		KVStorage:    store,
-		Metrics:      metrics.NewStorage(),
+		RoutingTable: *rt.NewRoutingTable(n.config.Kademlia.K, n.config.Kademlia.BitSize, nodeID),
+
+		bitSize: n.config.Kademlia.BitSize,
+		k:       n.config.Kademlia.K,
+		alpha:   n.config.Kademlia.Alpha,
+		beta:    n.config.Kademlia.Beta,
+
+		net:       n,
+		inputCh:   make(chan msg.Message),
+		KVStorage: store,
+		Metrics:   metrics.NewStorage(),
 	}
 
 	return node

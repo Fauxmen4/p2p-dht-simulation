@@ -9,7 +9,7 @@ import (
 func Test_NodeCreation() {
 	nodeID := pid.Generate()
 
-	table := rt.NewRoutingTable(20, nodeID)
+	table := rt.NewRoutingTable(20, 160, nodeID)
 
 	table.Print()
 

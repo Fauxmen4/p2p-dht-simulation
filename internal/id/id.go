@@ -2,6 +2,7 @@ package pid
 
 import (
 	"crypto/sha1"
+	"crypto/sha256"
 	"math/bits"
 
 	"github.com/google/uuid"
@@ -9,9 +10,8 @@ import (
 
 const (
 	// TODO: set it dynamically
-	SHA256BitSize  = 256
-	SHA1BitSize    = 160 // number of buckets (because SHA1 is used)
-	Blake2bBitSize = 128
+	SHA256BitSize = 256
+	SHA1BitSize   = 160 // number of buckets (because SHA1 is used)
 )
 
 type ID []byte
@@ -59,7 +59,17 @@ func Generate() PeerID {
 	return PeerID(uuid.NewString())
 }
 
-func ConvertPeerID(id PeerID) ID {
-	hash := sha1.Sum([]byte(id))
-	return hash[:]
+func ConvertPeerID(id PeerID, bitSize int) (hashID ID) {
+	switch bitSize {
+	case SHA256BitSize:
+		hash := sha256.Sum256([]byte(id))
+		hashID = hash[:]
+	case SHA1BitSize:
+		hash := sha1.Sum([]byte(id))
+		hashID = hash[:]
+	default:
+		panic("Not supported ID length")
+	}
+
+	return
 }

@@ -15,8 +15,10 @@ func main() {
 			},
 		},
 		Kademlia: config.Kademlia{
-			K:          10,
-			Alpha:      3,
+			K:       10,
+			Alpha:   3,
+			Beta:    10,
+			BitSize: 160,
 		},
 	}
 
