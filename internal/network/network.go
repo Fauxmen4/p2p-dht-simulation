@@ -61,9 +61,21 @@ func (n *Network) Join(node *Node) {
 	n.nodes[node.addr] = node
 
 	// choose one bootstrap node randomly
-	index := rand.IntN(len(n.bootstrapNodes))
-	bootstrapNode := n.bootstrapNodes[index]
+	bootstrapNodes := n.SelectBootstrap(n.config.Network.Bootstrap.Connections_count)
+	for _, bNode := range bootstrapNodes {
+		// join the network through node lookup
+		node.Join(bNode.id, bNode.addr)
+	}
+}
 
-	// join the network through node lookup
-	node.Join(bootstrapNode.id, bootstrapNode.addr)
+// SelectBootstrap returns n random bootsrap nodes
+func (n *Network) SelectBootstrap(count int) []*Node {
+	shuffled := make([]*Node, len(n.bootstrapNodes))
+	copy(shuffled, n.bootstrapNodes)
+
+	rand.Shuffle(count, func(i, j int) {
+		shuffled[i], shuffled[j] = shuffled[j], shuffled[i]
+	})
+
+	return shuffled[:count]
 }

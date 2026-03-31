@@ -1,19 +1,22 @@
 package main
 
 import (
+	"fmt"
 	"my-kad-dht/config"
-	pid "my-kad-dht/internal/id"
 	"my-kad-dht/internal/network"
-	"my-kad-dht/internal/storage"
 	"time"
 )
 
 func main() {
 	config := config.Config{
-		Network: config.Network{},
+		Network: config.Network{
+			Bootstrap: config.Bootstrap{
+				Connections_count: 2,
+			},
+		},
 		Kademlia: config.Kademlia{
-			BucketSize: 20,
-			K:          20,
+			BucketSize: 10,
+			K:          10,
 			Alpha:      3,
 		},
 	}
@@ -21,28 +24,14 @@ func main() {
 	net := network.New(config)
 
 	bootstrapNodesCount := 5
-	nodesCount := 20
-	clientNodesCount := 3
-	recordRounds := 5
+	nodesCount := 1000
 
-	bootstrapNodes := make([]*network.Node, bootstrapNodesCount)
-	for i := range len(bootstrapNodes) {
-		bootstrapNodes[i] = net.NewNode(
-			pid.Generate(),
-			storage.New(),
-		)
-	}
+	bootstrapNodes := net.CreateNNodes(bootstrapNodesCount)
 	net.AddBootstrapNodes(bootstrapNodes...)
 
 	net.StartNetwork()
 
-	nodes := make([]*network.Node, nodesCount)
-	for i := range len(nodes) {
-		nodes[i] = net.NewNode(
-			pid.Generate(),
-			storage.New(),
-		)
-	}
+	nodes := net.CreateNNodes(nodesCount)
 
 	for _, node := range nodes {
 		// fmt.Printf("Node %s is trying to join the network\n", node.ID())
@@ -59,32 +48,47 @@ func main() {
 
 	// TESTING
 
-	// Store
-	clientNodes := make([]*network.Node, clientNodesCount)
-	for i := range len(clientNodes) {
-		clientNodes[i] = net.NewNode(
-			pid.Generate(),
-			storage.New(),
-		)
-	}
+	// publish
+	publishCount := 20
+	rounds := 4
+	keys := make([]string, 0, publishCount*rounds)
 
-	keys := make([]string, 0, recordRounds*clientNodesCount)
-
-	for _, node := range clientNodes {
+	publishNodes := net.CreateNNodes(publishCount)
+	for _, node := range publishNodes {
 		net.Join(node)
 
-		for range recordRounds {
-			key, _ := node.StoreRandStr()
+		for range rounds {
+			key, value := node.StoreRandStr()
+			_ = value
 			keys = append(keys, key)
 		}
-
+		time.Sleep(1 * time.Millisecond)
 		go func() {
 			node.Run()
 		}()
 	}
 
-	time.Sleep(5 * time.Second)
+	// search
+	hops_count := make([]int, 0)
+	searchNodes := net.CreateNNodes(publishCount * rounds)
+	for i, node := range searchNodes {
+		net.Join(node)
 
-	// Retrieve
+		key := keys[i]
+		value, bool := node.FindKey(key)
+		fmt.Println(value, bool, node.Metrics.SearchInfo())
+		hops_count = append(hops_count, node.Metrics.ReturnHops()...)
+		time.Sleep(1 * time.Millisecond)
+		go func() {
+			node.Run()
+		}()
+	}
 
+	rpcCount := make([]int, 0, 1000)
+	for _, node := range nodes {
+		rpcCount = append(rpcCount, node.Metrics.CountRPCs())
+	}
+
+	fmt.Println(rpcCount)
+	fmt.Println(hops_count)
 }

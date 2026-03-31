@@ -15,10 +15,7 @@ type Config struct {
 
 type Network struct {
 	//? It can be polished to get into account all possible details but do we need it?
-	Boostrap struct {
-		nodesCount        int `yaml:"nodes_count"`
-		connections_count int `yaml:"connections_count"`
-	} `yaml:"bootstrap"`
+	Bootstrap Bootstrap `yaml:"bootstrap"`
 
 	NodesCount struct {
 		// nodes that act as usual "servers"
@@ -35,10 +32,18 @@ type Network struct {
 	} `yaml:"workload"`
 }
 
+type Bootstrap struct {
+	// How many bootstrap nodes should be in network
+	NodesCount        int `yaml:"nodes_count"`
+	// 
+	Connections_count int `yaml:"connections_count"`
+}
+
 type Kademlia struct {
 	BucketSize int `yaml:"bucket_size"` //? I can't understand is it different from K?
 	K          int `yaml:"k"`
 	Alpha      int `yaml:"alpha"`
+	Beta       int `yaml:"beta"`
 }
 
 func LoadConfig() *Config {

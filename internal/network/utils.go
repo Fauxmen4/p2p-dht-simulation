@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	pid "my-kad-dht/internal/id"
+	strg "my-kad-dht/internal/storage"
 	"os"
 	"strings"
 	"time"
@@ -69,4 +71,15 @@ func (n *Network) DumpTopology(outputStream string) {
 func (n *Node) DumpStorage() {
 	fmt.Printf("Storage of node: %s", n.ID())
 	n.KVStorage.Print()
+}
+
+func (n *Network) CreateNNodes(count int) []*Node {
+	nodes := make([]*Node, count)
+	for i := range len(nodes) {
+		nodes[i] = n.NewNode(
+			pid.Generate(),
+			strg.New(),
+		)
+	}
+	return nodes
 }

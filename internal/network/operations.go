@@ -3,7 +3,7 @@ package network
 import (
 	"my-kad-dht/internal/addr"
 	pid "my-kad-dht/internal/id"
-	"my-kad-dht/internal/message"
+	msg "my-kad-dht/internal/message"
 	rt "my-kad-dht/internal/table"
 	"my-kad-dht/internal/utils"
 	"time"
@@ -13,19 +13,19 @@ import (
 
 // Useful bindings
 
-func (n *Node) sendFindNode(targetID pid.PeerID, to addr.Addr) {
-	msg := &message.Request{
-		ID:   message.MsgID(uuid.NewString()),
-		Type: message.FindNodeType,
+func (n *Node) sendFind(targetID pid.PeerID, to addr.Addr, type_ msg.MsgType) {
+	msg_ := &msg.Request{
+		ID:   msg.MsgID(uuid.NewString()),
+		Type: type_,
 
-		Body: message.Body{ID: string(targetID)},
+		Body: msg.Body{ID: string(targetID)},
 
 		To:     to,
 		From:   n.addr,
 		FromID: n.id,
 	}
 
-	n.net.SendBlocking(msg)
+	n.net.SendBlocking(msg_)
 }
 
 // TODO: func (n *Node) sendFindValue() {}
@@ -49,7 +49,7 @@ func (n *Node) NodeLookup(targetID pid.PeerID, k int) []rt.PeerInfo {
 		// send alpha (or less) RPC FIND_NODE requests
 		for _, nodeInfo := range waitlist {
 			queried[nodeInfo.Id] = struct{}{}
-			n.sendFindNode(targetID, nodeInfo.Addr)
+			n.sendFind(targetID, nodeInfo.Addr, msg.FindNodeType)
 		}
 
 		// results from all RPCs gather to reduced,
@@ -58,10 +58,10 @@ func (n *Node) NodeLookup(targetID pid.PeerID, k int) []rt.PeerInfo {
 		for range len(waitlist) {
 			//? Here I caught deadlock, so I made reading with timeout
 			//! TEMPORARY FIX
-			var resp *message.Response
+			var resp *msg.Response
 			select {
-			case msg := (<-n.inputCh):
-				resp = msg.(*message.Response)
+			case msg_ := (<-n.inputCh):
+				resp = msg_.(*msg.Response)
 			case <-time.After(3 * time.Millisecond):
 				break outer
 			}
@@ -125,18 +125,98 @@ func (n *Node) Store(key, value string) {
 }
 
 func (n *Node) sendStore(key, value string, to addr.Addr) {
-	msg := &message.Request{
-		ID:   message.MsgID(uuid.NewString()),
-		Type: message.StoreType,
+	msg_ := &msg.Request{
+		ID:   msg.MsgID(uuid.NewString()),
+		Type: msg.StoreType,
 
-		Body: message.Body{Key: key, InputValue: value},
+		Body: msg.Body{Key: key, InputValue: value},
 
 		To:     to,
 		From:   n.addr,
 		FromID: n.id,
 	}
 
-	n.net.SendBlocking(msg)
+	n.net.SendBlocking(msg_)
 }
 
-// func (n *Node) Get(key string) (string, bool) {}
+func (n *Node) FindKey(key string) (string, bool) {
+	value, ok, hops := n.keyLookup(key)
+	n.Metrics.NewSearch(key, hops, ok)
+	return value, ok
+}
+
+func (n *Node) keyLookup(key string) (string, bool, int) {
+	targetID := pid.PeerID(key)
+
+	// contains non-asked nodes which would be quired on next iteration
+	waitlist := n.RoutingTable.KClosestNodes(targetID, n.alpha)
+	queried := make(map[pid.PeerID]struct{})
+
+	reduced := make([]rt.PeerInfo, 0)
+	reduced = append(reduced, waitlist...)
+	set := make(map[pid.PeerID]struct{}) // used for deduplication in reduced
+	for _, node := range waitlist {
+		set[node.Id] = struct{}{}
+	}
+
+	hops := 0
+	for len(waitlist) != 0 {
+		hops++
+
+		// send alpha (or less) RPC FIND_NODE requests
+		for _, nodeInfo := range waitlist {
+			queried[nodeInfo.Id] = struct{}{}
+			n.sendFind(targetID, nodeInfo.Addr, msg.FindValueType)
+		}
+
+		// results from all RPCs gather to reduced,
+		// than they 1. deduplicated, 2. sorted by distance to target ID, 3. choose alpha (or less) non-queried before
+	outer:
+		for range len(waitlist) {
+			//? Here I caught deadlock, so I made reading with timeout
+			//! TEMPORARY FIX
+			var resp *msg.Response
+			select {
+			case msg_ := (<-n.inputCh):
+				resp = msg_.(*msg.Response)
+			case <-time.After(3 * time.Millisecond):
+				break outer
+			}
+
+			if resp.Body.OutputValue != "" {
+				return resp.Body.OutputValue, true, hops
+			}
+
+			// add fresh data to routing table
+			for _, peerInfo := range resp.Body.NearestNodes {
+				if peerInfo.Id == n.id {
+					continue
+				}
+				n.RoutingTable.Add(peerInfo.Id, peerInfo.Addr)
+
+				if _, ok := set[peerInfo.Id]; !ok {
+					reduced = append(reduced, peerInfo)
+					set[peerInfo.Id] = struct{}{}
+				}
+			}
+		}
+
+		reduced = rt.SortClosestPeers(reduced, pid.ConvertPeerID(targetID))
+		waitlist = make([]rt.PeerInfo, 0, n.alpha)
+		for _, nodeInfo := range reduced {
+			if _, ok := queried[nodeInfo.Id]; !ok {
+				waitlist = append(waitlist, nodeInfo)
+			}
+			if len(waitlist) == n.alpha {
+				break
+			}
+		}
+	}
+
+	// if len(reduced) < k {
+	// 	return reduced
+	// }
+	// return reduced[:k]
+
+	return "", false, hops
+}
