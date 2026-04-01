@@ -14,3 +14,24 @@ func RandString(n int) string {
 	}
 	return string(b)
 }
+
+// RandomElements returns n random elements from the given slice.
+// Inputs are not modified.
+func RandomElements[T any](slice []T, n int) []T {
+	if len(slice) <= n {
+		return slice
+	}
+
+	if n == 0 {
+		return []T{}
+	}
+
+	shuffled := make([]T, len(slice))
+	copy(shuffled, slice)
+
+	rand.Shuffle(len(shuffled), func(i, j int) {
+		shuffled[i], shuffled[j] = shuffled[j], shuffled[i]
+	})
+
+	return shuffled[:n]
+}

@@ -1,10 +1,10 @@
 package network
 
 import (
-	"math/rand/v2"
 	"my-kad-dht/config"
 	"my-kad-dht/internal/addr"
 	msg "my-kad-dht/internal/message"
+	"my-kad-dht/internal/utils"
 )
 
 type Network struct {
@@ -13,27 +13,37 @@ type Network struct {
 	bootstrapNodes []*Node             // nodes for joining the network
 }
 
-// New is network constructor.
-// Returns empty network (no nodes), only config is added.
+// Network constructor
 func New(cfg config.Config) *Network {
 	net := &Network{
-		config: cfg,
+		config:         cfg,
 		nodes:          make(map[addr.Addr]*Node),
-		bootstrapNodes: make([]*Node, 0),
+	}
+
+	// bootstrap nodes
+	nodes := net.CreateNNodes(cfg.Network.Bootstrap.NodesCount)
+	net.bootstrapNodes = nodes
+	for _, node := range nodes {
+		net.nodes[node.addr] = node
 	}
 
 	return net
 }
 
-func (n *Network) AddBootstrapNodes(nodes ...*Node) {
-	for _, node := range nodes {
-		n.nodes[node.addr] = node
+func (n *Network) Join(node *Node) {
+	n.nodes[node.addr] = node
+
+	// randomly choose bootstrap nodes
+	bootstrapNodes := utils.RandomElements(
+		n.bootstrapNodes,
+		n.config.Network.Bootstrap.Connections_count,
+	)
+	for _, bootNode := range bootstrapNodes {
+		node.Join(bootNode.id, bootNode.addr)
 	}
-	n.bootstrapNodes = append(n.bootstrapNodes, nodes...)
 }
 
 // StartNetwork runs all bootstrap nodes in separate goroutines
-// ! CONCURRENT
 func (n *Network) StartNetwork() {
 	for i := range n.bootstrapNodes {
 		go func() {
@@ -53,28 +63,4 @@ func (n *Network) Send(msg msg.Message) {
 // SendBlocking sends message and blocks until reader appears
 func (n *Network) SendBlocking(msg msg.Message) {
 	n.nodes[msg.Receiver()].inputCh <- msg
-}
-
-func (n *Network) Join(node *Node) {
-	// register node in network
-	n.nodes[node.addr] = node
-
-	// choose one bootstrap node randomly
-	bootstrapNodes := n.SelectBootstrap(n.config.Network.Bootstrap.Connections_count)
-	for _, bNode := range bootstrapNodes {
-		// join the network through node lookup
-		node.Join(bNode.id, bNode.addr)
-	}
-}
-
-// SelectBootstrap returns n random bootsrap nodes
-func (n *Network) SelectBootstrap(count int) []*Node {
-	shuffled := make([]*Node, len(n.bootstrapNodes))
-	copy(shuffled, n.bootstrapNodes)
-
-	rand.Shuffle(count, func(i, j int) {
-		shuffled[i], shuffled[j] = shuffled[j], shuffled[i]
-	})
-
-	return shuffled[:count]
 }

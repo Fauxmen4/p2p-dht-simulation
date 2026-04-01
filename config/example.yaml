@@ -1,13 +1,11 @@
-network:
-  bootsrap:
-    nodes_count: 4
-    connections_count: 1
-
-  nodes_count:
-    total: 100
-    active: 10
-
 kademlia:
-  bucket_size: 20
-  k: 20
-  alpha: 6
+  bit_size: 160
+  k:        10
+  alpha:    6
+  beta:     6
+
+network:
+  nodes_count: 20
+  bootstrap:
+    nodes_count:       2
+    connections_count: 2

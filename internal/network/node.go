@@ -1,6 +1,7 @@
 package network
 
 import (
+	"my-kad-dht/config"
 	"my-kad-dht/internal/addr"
 	pid "my-kad-dht/internal/id"
 	msg "my-kad-dht/internal/message"
@@ -22,10 +23,7 @@ type Node struct {
 	RoutingTable rt.RoutingTable // slice of kbuckets
 
 	// Kademlia parameters
-	bitSize int // number of bits in ID
-	k       int // bucket size
-	alpha   int // number of async requests to send in parallel during node lookup
-	beta    int // number of contacts to return in response for FindNode, FindValue
+	kad config.Kademlia
 
 	// Network simulation. It stores mapping: address->node.
 	// All peers can be accessed through address as in real life.
@@ -45,10 +43,7 @@ func (n *Network) NewNode(nodeID pid.PeerID, store storage) *Node {
 		addr:         addr.GenerateAddr(),
 		RoutingTable: *rt.NewRoutingTable(n.config.Kademlia.K, n.config.Kademlia.BitSize, nodeID),
 
-		bitSize: n.config.Kademlia.BitSize,
-		k:       n.config.Kademlia.K,
-		alpha:   n.config.Kademlia.Alpha,
-		beta:    n.config.Kademlia.Beta,
+		kad: n.config.Kademlia,
 
 		net:       n,
 		inputCh:   make(chan msg.Message),
@@ -64,7 +59,7 @@ func (n *Node) ID() pid.PeerID {
 }
 
 // Run make node listening for inbound messages through the channel and handle them in sync mode (one by one)
-// TODO: add context.Context?
+// ! TODO: add context.Context?
 func (n *Node) Run() {
 	for message := range n.inputCh {
 		req, ok := message.(*msg.Request)
@@ -131,13 +126,13 @@ func (n *Node) store(key, value string) {
 }
 
 func (n *Node) findNode(nodeID string) []rt.PeerInfo {
-	return n.RoutingTable.KClosestNodes(pid.PeerID(nodeID), n.k)
+	return n.RoutingTable.KClosestNodes(pid.PeerID(nodeID), n.kad.K)
 }
 
 func (n *Node) findValue(id string) (any, bool) {
 	if value, ok := n.KVStorage.Get(id); ok {
 		return value, true
 	}
-	nearestContacts := n.RoutingTable.KClosestNodes(pid.PeerID(id), n.k)
+	nearestContacts := n.RoutingTable.KClosestNodes(pid.PeerID(id), n.kad.K)
 	return nearestContacts, false
 }

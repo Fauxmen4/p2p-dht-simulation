@@ -34,7 +34,7 @@ func (n *Node) sendFind(targetID pid.PeerID, to addr.Addr, type_ msg.MsgType) {
 
 func (n *Node) NodeLookup(targetID pid.PeerID, k int) []rt.PeerInfo {
 	// contains non-asked nodes which would be quired on next iteration
-	waitlist := n.RoutingTable.KClosestNodes(targetID, n.alpha)
+	waitlist := n.RoutingTable.KClosestNodes(targetID, n.kad.Alpha)
 	queried := make(map[pid.PeerID]struct{})
 
 	reduced := make([]rt.PeerInfo, 0)
@@ -79,13 +79,13 @@ func (n *Node) NodeLookup(targetID pid.PeerID, k int) []rt.PeerInfo {
 			}
 		}
 
-		reduced = rt.SortClosestPeers(reduced, pid.ConvertPeerID(targetID, n.bitSize))
-		waitlist = make([]rt.PeerInfo, 0, n.alpha)
+		reduced = rt.SortClosestPeers(reduced, pid.ConvertPeerID(targetID, n.kad.BitSize))
+		waitlist = make([]rt.PeerInfo, 0, n.kad.Alpha)
 		for _, nodeInfo := range reduced {
 			if _, ok := queried[nodeInfo.Id]; !ok {
 				waitlist = append(waitlist, nodeInfo)
 			}
-			if len(waitlist) == n.alpha {
+			if len(waitlist) == n.kad.Alpha {
 				break
 			}
 		}
@@ -103,7 +103,7 @@ func (n *Node) Join(id pid.PeerID, addr addr.Addr) {
 
 	// During lookup kbuckets are filled with intermediate results.
 	// TODO: maybe we could also add final result to rt
-	_ = n.NodeLookup(id, n.k)
+	_ = n.NodeLookup(id, n.kad.K)
 }
 
 const (
@@ -118,7 +118,7 @@ func (n *Node) StoreRandStr() (string, string) {
 
 func (n *Node) Store(key, value string) {
 	targetID := pid.PeerID(key)
-	candidates := n.NodeLookup(targetID, n.k)
+	candidates := n.NodeLookup(targetID, n.kad.K)
 	for _, candidate := range candidates {
 		n.sendStore(key, value, candidate.Addr)
 	}
@@ -149,7 +149,7 @@ func (n *Node) keyLookup(key string) (string, bool, int) {
 	targetID := pid.PeerID(key)
 
 	// contains non-asked nodes which would be quired on next iteration
-	waitlist := n.RoutingTable.KClosestNodes(targetID, n.alpha)
+	waitlist := n.RoutingTable.KClosestNodes(targetID, n.kad.Alpha)
 	queried := make(map[pid.PeerID]struct{})
 
 	reduced := make([]rt.PeerInfo, 0)
@@ -201,13 +201,13 @@ func (n *Node) keyLookup(key string) (string, bool, int) {
 			}
 		}
 
-		reduced = rt.SortClosestPeers(reduced, pid.ConvertPeerID(targetID, n.bitSize))
-		waitlist = make([]rt.PeerInfo, 0, n.alpha)
+		reduced = rt.SortClosestPeers(reduced, pid.ConvertPeerID(targetID, n.kad.BitSize))
+		waitlist = make([]rt.PeerInfo, 0, n.kad.Alpha)
 		for _, nodeInfo := range reduced {
 			if _, ok := queried[nodeInfo.Id]; !ok {
 				waitlist = append(waitlist, nodeInfo)
 			}
-			if len(waitlist) == n.alpha {
+			if len(waitlist) == n.kad.Alpha {
 				break
 			}
 		}
