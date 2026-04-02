@@ -41,8 +41,4 @@ func main() {
 	log.Info("nodes joined the network",
 		zap.Int("count", cfg.Network.Bootstrap.NodesCount),
 	)
-
-	for _, node := range nodes {
-		node.RoutingTable.Print()
-	}
 }

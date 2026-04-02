@@ -5,7 +5,7 @@ kademlia:
   beta:     6
 
 network:
-  nodes_count: 10
+  nodes_count: 5
   bootstrap:
-    nodes_count:       2
-    connections_count: 2
+    nodes_count:       1
+    connections_count: 1

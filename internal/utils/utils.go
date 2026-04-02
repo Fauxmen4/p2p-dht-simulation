@@ -18,12 +18,12 @@ func RandString(n int) string {
 // RandomElements returns n random elements from the given slice.
 // Inputs are not modified.
 func RandomElements[T any](slice []T, n int) []T {
-	if len(slice) <= n {
-		return slice
+	if n <= 0 {
+		return []T{}
 	}
 
-	if n == 0 {
-		return []T{}
+	if len(slice) < n {
+		return slice
 	}
 
 	shuffled := make([]T, len(slice))
