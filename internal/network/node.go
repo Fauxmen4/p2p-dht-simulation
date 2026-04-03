@@ -1,12 +1,13 @@
 package network
 
 import (
-	"my-kad-dht/config"
 	"my-kad-dht/internal/addr"
+	"my-kad-dht/internal/config"
 	pid "my-kad-dht/internal/id"
 	msg "my-kad-dht/internal/message"
 	"my-kad-dht/internal/metrics"
 	rt "my-kad-dht/internal/table"
+	"sync"
 )
 
 type storage interface {
@@ -29,8 +30,11 @@ type Node struct {
 	// All peers can be accessed through address as in real life.
 	net *Network
 
-	// Mailbox for inbound messages of types network.Request, network.Response.
+	// Mailbox for inbound messages of types network.Request.
 	inputCh chan msg.Message
+	// Mailbox with mutex to handle a series of FIND_NODE/FIND_VALUE responses
+	pending   map[msg.MsgID]chan *msg.Response
+	pendingMu sync.Mutex
 
 	KVStorage storage
 
@@ -45,8 +49,11 @@ func (n *Network) NewNode(nodeID pid.PeerID, store storage) *Node {
 
 		kad: n.config.Kademlia,
 
-		net:       n,
-		inputCh:   make(chan msg.Message),
+		net: n,
+
+		inputCh: make(chan msg.Message),
+		pending: make(map[msg.MsgID]chan *msg.Response),
+
 		KVStorage: store,
 		Metrics:   metrics.NewStorage(),
 	}
@@ -61,20 +68,36 @@ func (n *Node) ID() pid.PeerID {
 // Run make node listening for inbound messages through the channel and handle them in sync mode (one by one)
 // ! TODO: add context.Context?
 func (n *Node) Run() {
+	// for message := range n.inputCh {
+	// 	req, ok := message.(*msg.Request)
+	// 	if !ok {
+	// 		// TODO: invalid message data
+	// 	}
+	// 	resp := n.Handle(req)
+
+	// 	n.Metrics.NewRPC()
+
+	// 	if resp != nil {
+	// 		n.SendResponse(resp)
+	// 	}
+	// }
 	for message := range n.inputCh {
-		req, ok := message.(*msg.Request)
-		if !ok {
-			// TODO: invalid message data
-		}
-		resp := n.Handle(req)
-
-		n.Metrics.NewRPC()
-
-		if resp != nil {
-			n.SendResponse(resp)
+		switch m := message.(type) {
+		case *msg.Request:
+			resp := n.Handle(m)
+			n.Metrics.NewRPC()
+			if resp != nil {
+				n.SendResponse(resp)
+			}
+		case *msg.Response:
+			n.pendingMu.Lock()
+			ch, ok := n.pending[m.ID]
+			n.pendingMu.Unlock()
+			if ok {
+				ch <- m
+			}
 		}
 	}
-
 }
 
 func (n *Node) Handle(req *msg.Request) *msg.Response {
@@ -135,4 +158,22 @@ func (n *Node) findValue(id string) (any, bool) {
 	}
 	nearestContacts := n.RoutingTable.KClosestNodes(pid.PeerID(id), n.kad.K)
 	return nearestContacts, false
+}
+
+// helper methods for pending requests
+
+func (n *Node) registerPending(id msg.MsgID) chan *msg.Response {
+	ch := make(chan *msg.Response)
+
+	n.pendingMu.Lock()
+	n.pending[id] = ch
+	n.pendingMu.Unlock()
+
+	return ch
+}
+
+func (n *Node) unregisterPending(id msg.MsgID) {
+	n.pendingMu.Lock()
+	delete(n.pending, id)
+	n.pendingMu.Unlock()
 }

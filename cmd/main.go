@@ -1,10 +1,11 @@
-// TODO: move this code to simulation
-// ? Currently I am working on static scenario
 package main
 
 import (
-	"my-kad-dht/config"
+	"fmt"
+	"math/rand/v2"
+	"my-kad-dht/internal/config"
 	"my-kad-dht/internal/network"
+	"my-kad-dht/internal/utils"
 	"time"
 
 	"go.uber.org/zap"
@@ -15,7 +16,7 @@ func main() {
 	log := zap.Must(zap.NewDevelopment())
 
 	// read config
-	cfg := config.LoadConfig("config/example.yaml")
+	cfg := config.LoadConfig("configs/static_success.yaml")
 
 	// init network
 	net := network.New(*cfg)
@@ -39,6 +40,44 @@ func main() {
 		}()
 	}
 	log.Info("nodes joined the network",
-		zap.Int("count", cfg.Network.Bootstrap.NodesCount),
+		zap.Int("count", cfg.Network.NodesCount),
 	)
+
+	// starting work
+	log.Info("doing workload... (publishing data)")
+
+	// publish data
+	count := cfg.Workload.Publications
+	data := make(map[string]string, count)
+	for range count {
+		key := utils.RandString(cfg.Workload.KeySize)
+		value := utils.RandString(cfg.Workload.ValueSize)
+		data[key] = value
+	}
+
+	for key, value := range data {
+		index := rand.IntN(cfg.Network.NodesCount)
+		nodes[index].Store(key, value)
+
+		time.Sleep(5 * time.Millisecond)
+	}
+	log.Info("data successfully published")
+
+	// search data
+	log.Info("searching data...")
+	for key, _ := range data {
+		index := rand.IntN(cfg.Network.NodesCount)
+		_, _ = nodes[index].FindKey(key)
+
+		time.Sleep(5 * time.Millisecond)
+	}
+	log.Info("finished searching")
+
+	// print out results
+	for _, node := range nodes {
+		info := node.Metrics.SearchInfo()
+		if len(info) != 0 {
+			fmt.Println(info)
+		}
+	}
 }

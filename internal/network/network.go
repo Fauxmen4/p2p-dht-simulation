@@ -1,8 +1,11 @@
 package network
 
 import (
-	"my-kad-dht/config"
+	"math/rand/v2"
+	"time"
+
 	"my-kad-dht/internal/addr"
+	"my-kad-dht/internal/config"
 	msg "my-kad-dht/internal/message"
 	"my-kad-dht/internal/utils"
 )
@@ -16,8 +19,8 @@ type Network struct {
 // Network constructor
 func New(cfg config.Config) *Network {
 	net := &Network{
-		config:         cfg,
-		nodes:          make(map[addr.Addr]*Node),
+		config: cfg,
+		nodes:  make(map[addr.Addr]*Node),
 	}
 
 	// bootstrap nodes
@@ -60,7 +63,14 @@ func (n *Network) Send(msg msg.Message) {
 	}
 }
 
-// SendBlocking sends message and blocks until reader appears
-func (n *Network) SendBlocking(msg msg.Message) {
-	n.nodes[msg.Receiver()].inputCh <- msg
+// SendBlocking sends message and blocks until reader appears.
+// Applies configured drop_rate and latency_ms failure injections.
+func (n *Network) SendBlocking(m msg.Message) {
+	if n.config.Network.DropRate > 0 && rand.Float64() < n.config.Network.DropRate {
+		return
+	}
+	if n.config.Network.LatencyMs > 0 {
+		time.Sleep(time.Duration(n.config.Network.LatencyMs) * time.Millisecond)
+	}
+	n.nodes[m.Receiver()].inputCh <- m
 }
