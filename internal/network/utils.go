@@ -49,8 +49,7 @@ func (n *Network) DumpTopology(outputStream string) {
 
 	out := os.Stdout
 	if strings.ToLower(outputStream) != "stdout" {
-		current := time.Now()
-		dumpName := fmt.Sprintf("%v-%v-%v.json", current.Hour(), current.Minute(), current.Second())
+		dumpName := fmt.Sprintf("data/topology/%v.json", time.Now())
 		file, err := os.OpenFile(dumpName, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 		if err != nil {
 			log.Printf("failed to create dump file: %v", err.Error())

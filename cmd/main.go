@@ -80,4 +80,6 @@ func main() {
 			fmt.Println(info)
 		}
 	}
+
+	net.DumpTopology("non-stdout")
 }
