@@ -34,7 +34,7 @@ func main() {
 	for _, node := range nodes {
 		net.Join(node)
 
-		time.Sleep(1 * time.Millisecond) // TODO: WTF?
+		time.Sleep(1 * time.Millisecond)
 		go func() {
 			node.Run()
 		}()
@@ -75,11 +75,13 @@ func main() {
 
 	// print out results
 	for _, node := range nodes {
-		info := node.Metrics.SearchInfo()
+		info := node.Metrics.SearchHistory()
 		if len(info) != 0 {
 			fmt.Println(info)
 		}
 	}
 
-	net.DumpTopology("non-stdout")
+	// save results
+	net.DumpTopology()
+	net.DumpMetrics()
 }

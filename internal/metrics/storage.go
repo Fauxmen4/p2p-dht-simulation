@@ -15,6 +15,7 @@ type hopInfo struct {
 type Storage struct {
 	// shows load of the node
 	handledRPCs int
+	sentRPCs    int
 
 	search search
 
@@ -34,11 +35,20 @@ func NewStorage() *Storage {
 	return s
 }
 
-func (s *Storage) NewRPC() {
-	s.handledRPCs += 1
+// isSent = false means that its inbound RPC
+func (s *Storage) NewRPC(isSent bool) {
+	if isSent {
+		s.sentRPCs++
+	} else {
+		s.handledRPCs++
+	}
 }
 
-func (s *Storage) CountRPCs() int {
+func (s *Storage) SentRPCs() int {
+	return s.sentRPCs
+}
+
+func (s *Storage) HandledRPCs() int {
 	return s.handledRPCs
 }
 
@@ -57,15 +67,20 @@ func (s *Storage) NewSearch(key string, hops int, success bool) {
 	})
 }
 
-func (s *Storage) SearchInfo() []hopInfo {
+func (s *Storage) SearchHistory() []hopInfo {
 	return s.hopHistory
 }
 
-func (s *Storage) ReturnHops() []int {
-	hops_count := []int{}
-	for _, hops := range s.hopHistory {
-		hops_count = append(hops_count, hops.hops)
+func (s *Storage) SuccessHopCount() []int {
+	result := []int{}
+	for _, hopInfo := range s.hopHistory {
+		if hopInfo.success {
+			result = append(result, hopInfo.hops)
+		}
 	}
+	return result
+}
 
-	return hops_count
+func (s *Storage) CountKeyLookups() int {
+	return len(s.hopHistory)
 }

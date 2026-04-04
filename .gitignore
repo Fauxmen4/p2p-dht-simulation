@@ -1,1 +1,8 @@
+# JSONs for metrics and topology
 data
+
+# Histograms
+plotter/*
+!plotter/main.py
+
+.venv

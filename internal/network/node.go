@@ -6,6 +6,7 @@ import (
 	pid "my-kad-dht/internal/id"
 	msg "my-kad-dht/internal/message"
 	"my-kad-dht/internal/metrics"
+	strg "my-kad-dht/internal/storage"
 	rt "my-kad-dht/internal/table"
 	"sync"
 )
@@ -61,6 +62,17 @@ func (n *Network) NewNode(nodeID pid.PeerID, store storage) *Node {
 	return node
 }
 
+func (n *Network) CreateNNodes(count int) []*Node {
+	nodes := make([]*Node, count)
+	for i := range len(nodes) {
+		nodes[i] = n.NewNode(
+			pid.Generate(),
+			strg.New(),
+		)
+	}
+	return nodes
+}
+
 func (n *Node) ID() pid.PeerID {
 	return n.id
 }
@@ -68,24 +80,11 @@ func (n *Node) ID() pid.PeerID {
 // Run make node listening for inbound messages through the channel and handle them in sync mode (one by one)
 // ! TODO: add context.Context?
 func (n *Node) Run() {
-	// for message := range n.inputCh {
-	// 	req, ok := message.(*msg.Request)
-	// 	if !ok {
-	// 		// TODO: invalid message data
-	// 	}
-	// 	resp := n.Handle(req)
-
-	// 	n.Metrics.NewRPC()
-
-	// 	if resp != nil {
-	// 		n.SendResponse(resp)
-	// 	}
-	// }
 	for message := range n.inputCh {
+		n.Metrics.NewRPC(false)
 		switch m := message.(type) {
 		case *msg.Request:
 			resp := n.Handle(m)
-			n.Metrics.NewRPC()
 			if resp != nil {
 				n.SendResponse(resp)
 			}
@@ -139,6 +138,7 @@ func (n *Node) Handle(req *msg.Request) *msg.Response {
 }
 
 func (n *Node) SendResponse(resp *msg.Response) {
+	n.Metrics.NewRPC(true)
 	n.net.Send(resp)
 }
 
