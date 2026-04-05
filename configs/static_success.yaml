@@ -7,13 +7,12 @@ kademlia:
   beta:     3
 
 network:
-  nodes_count: 1000
-  drop_rate:   0
-  latency_ms:  0
+  nodes_count: 100
+  # drop_rate:   0
+  # latency_ms:  0
   bootstrap:
-    nodes_count:       5
+    nodes_count:       2
     connections_count: 2
 
 workload:
   publications: 80
-  
