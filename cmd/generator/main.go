@@ -6,6 +6,7 @@ import (
 	"log"
 	"math/rand/v2"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/brianvoe/gofakeit/v7"
@@ -14,7 +15,7 @@ import (
 )
 
 const (
-	outputPath = "scenario.yaml"
+	scenariosDir = "data/scenarios"
 
 	strLength = 10 // used for key, value for storing
 )
@@ -25,8 +26,13 @@ type YAMLWriter struct {
 
 func NewYAMLWriter(outputPath string) *YAMLWriter {
 	//! FILE NOT CLOSED
-	//! ERROR NOT HANDLED
-	file, _ := os.Create("scenario.yaml")
+	if err := os.MkdirAll(filepath.Dir(outputPath), 0755); err != nil {
+		log.Fatalf("failed to create output directory: %v", err)
+	}
+	file, err := os.Create(outputPath)
+	if err != nil {
+		log.Fatalf("failed to create output file: %v", err)
+	}
 	return &YAMLWriter{file: file}
 }
 
@@ -57,11 +63,19 @@ type action struct {
 }
 
 func main() {
-	cfg := LoadConfig("configs/static_success.yaml")
+	if len(os.Args) < 2 {
+		log.Fatalf("usage: generator <config.yaml>")
+	}
+	configPath := os.Args[1]
+
+	cfg := LoadConfig(configPath)
+
+	configName := strings.TrimSuffix(filepath.Base(configPath), filepath.Ext(configPath))
+	outPath := filepath.Join(scenariosDir, configName+".yaml")
 
 	generator := NewGenerator(cfg.Seed)
-	_ = generator
-	writer := NewYAMLWriter("scenario.yaml")
+	writer := NewYAMLWriter(outPath)
+	log.Printf("generating scenario from %s -> %s", configPath, outPath)
 
 	// write seed
 	writer.WriteSection("seed", cfg.Seed)
