@@ -1,7 +1,7 @@
 .PHONY: run vis plot clean gen
 
 gen:
-	@go run cmd/generator/main.go configs/$(c).yaml
+	@go run cmd/generator/main.go configs/$(config).yaml
 
 run:
 	@go run cmd/main.go

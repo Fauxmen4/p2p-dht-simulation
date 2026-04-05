@@ -47,6 +47,13 @@ func (w *YAMLWriter) WriteSection(name string, data any) {
 	}
 }
 
+func (w *YAMLWriter) Write(text string) {
+	_, err := w.file.Write([]byte(text))
+	if err != nil {
+		log.Fatalf("failed to write text \"%s\": %w", text, err)
+	}
+}
+
 type node struct {
 	ID           string   `yaml:"id"`
 	Address      string   `yaml:"address"`
@@ -78,7 +85,7 @@ func main() {
 	log.Printf("generating scenario from %s -> %s", configPath, outPath)
 
 	// write seed
-	writer.WriteSection("seed", cfg.Seed)
+	writer.Write(fmt.Sprintf("seed: %d", cfg.Seed))
 
 	// kademlia params
 	writer.WriteSection("Kademlia", cfg.Kademlia)
