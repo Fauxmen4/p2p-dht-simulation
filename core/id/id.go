@@ -7,12 +7,6 @@ import (
 	"github.com/google/uuid"
 )
 
-const (
-	// TODO: set it dynamically
-	SHA256BitSize = 256
-	SHA1BitSize   = 160 // number of buckets (because SHA1 is used)
-)
-
 type ID []byte
 
 func XOR(a, b []byte) []byte {

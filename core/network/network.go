@@ -27,6 +27,17 @@ func New(cfg cfg.Kademlia, bootstrapCfg []cfg.NodeSpec) *Network {
 	return net
 }
 
+func (n *Network) CreateNNodes(nodesCfg []cfg.NodeSpec, kademliaCfg cfg.Kademlia) []*Node {
+	nodes := make([]*Node, len(nodesCfg))
+	for i := range nodes {
+		nodes[i] = n.NewNode(
+			nodesCfg[i],
+			kademliaCfg,
+		)
+	}
+	return nodes
+}
+
 // StartNetwork runs all bootstrap nodes in separate goroutines
 func (n *Network) StartNetwork() {
 	for i := range n.bootstrapNodes {

@@ -11,8 +11,6 @@ import (
 	"sync"
 )
 
-
-
 type storage interface {
 	Set(key, value string)
 	Get(key string) (string, bool)
@@ -50,32 +48,15 @@ func (net *Network) NewNode(nodeSpec cfg.NodeSpec, cfg cfg.Kademlia) *Node {
 		id:           id,
 		addr:         addr.Addr(nodeSpec.Address),
 		RoutingTable: *rt.NewRoutingTable(cfg.K, cfg.BitSize, id),
-
-		kad: cfg,
-
-		net: net,
-
-		inputCh: make(chan msg.Message),
-		pending: make(map[msg.MsgID]chan *msg.Response),
-
-		KVStorage: strg.New(),
-		Metrics:   metrics.NewStorage(),
+		kad:          cfg,
+		net:          net,
+		inputCh:      make(chan msg.Message),
+		pending:      make(map[msg.MsgID]chan *msg.Response),
+		KVStorage:    strg.New(),
+		Metrics:      metrics.NewStorage(),
 	}
-
 	net.nodes[node.addr] = node
-
 	return node
-}
-
-func (n *Network) CreateNNodes(nodesCfg []cfg.NodeSpec, kademliaCfg cfg.Kademlia) []*Node {
-	nodes := make([]*Node, len(nodesCfg))
-	for i := range nodes {
-		nodes[i] = n.NewNode(
-			nodesCfg[i],
-			kademliaCfg,
-		)
-	}
-	return nodes
 }
 
 func (n *Node) ID() pid.PeerID {

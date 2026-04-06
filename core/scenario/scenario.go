@@ -40,12 +40,12 @@ type NodeSpec struct {
 func MustLoad(path string) *Scenario {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		panic(fmt.Sprintf("failed to read scenario file %s: %w", path, err))
+		panic(fmt.Sprintf("failed to read scenario file %s: %v", path, err))
 	}
 
 	var s Scenario
 	if err := yaml.Unmarshal(data, &s); err != nil {
-		panic(fmt.Errorf("failed to unmarshal .yaml scenario %s: %w", path, err))
+		panic(fmt.Errorf("failed to unmarshal .yaml scenario %s: %v", path, err))
 	}
 
 	return &s

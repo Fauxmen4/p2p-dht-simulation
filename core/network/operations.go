@@ -99,10 +99,6 @@ func (n *Node) Join(id pid.PeerID, addr addr.Addr) {
 	_ = n.NodeLookup(id, n.kad.K)
 }
 
-const (
-	RandStrLength = 8
-)
-
 func (n *Node) Store(key, value string) {
 	targetID := hashKey(key)
 	candidates := n.NodeLookup(targetID, n.kad.K)
