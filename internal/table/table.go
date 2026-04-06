@@ -24,7 +24,7 @@ func NewRoutingTable(bucketSize int, bitSize int, selfID pid.PeerID) *RoutingTab
 
 	rt := &RoutingTable{
 		selfID:    selfID,
-		selfDhtId: pid.ConvertPeerID(selfID, bitSize),
+		selfDhtId: pid.ConvertPeerID(selfID),
 
 		bitSize:    bitSize,
 		buckets:    buckets,
@@ -48,7 +48,7 @@ func (rt *RoutingTable) Add(p pid.PeerID, addr addr.Addr) bool {
 	if bucket.Len() < rt.bucketSize {
 		bucket.PushBack(PeerInfo{
 			Id:    p,
-			dhtID: pid.ConvertPeerID(p, rt.bitSize),
+			dhtID: pid.ConvertPeerID(p),
 			Addr:  addr,
 		})
 		return true
@@ -59,7 +59,7 @@ func (rt *RoutingTable) Add(p pid.PeerID, addr addr.Addr) bool {
 
 // KClosestNodes returns k nodes with IDs closest to target id
 func (rt *RoutingTable) KClosestNodes(target pid.PeerID, k int) []PeerInfo {
-	targetID := pid.ConvertPeerID(target, rt.bitSize)
+	targetID := pid.ConvertPeerID(target)
 	cpl := pid.CommonPrefixLen(targetID, rt.selfDhtId)
 	//? useless check
 	if cpl >= len(rt.buckets) {
@@ -116,7 +116,7 @@ func (rt *RoutingTable) Print() {
 func (rt *RoutingTable) bucketIndex(p pid.PeerID) int {
 	cpl := pid.CommonPrefixLen(
 		rt.selfDhtId,
-		pid.ConvertPeerID(p, rt.bitSize),
+		pid.ConvertPeerID(p),
 	)
 	bucketID := cpl
 	if bucketID >= len(rt.buckets) {

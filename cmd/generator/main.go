@@ -50,7 +50,7 @@ func (w *YAMLWriter) WriteSection(name string, data any) {
 func (w *YAMLWriter) Write(text string) {
 	_, err := w.file.Write([]byte(text))
 	if err != nil {
-		log.Fatalf("failed to write text \"%s\": %w", text, err)
+		log.Fatalf("failed to write text \"%s\": %v", text, err)
 	}
 }
 

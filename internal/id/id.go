@@ -1,8 +1,7 @@
 package pid
 
 import (
-	"crypto/sha1"
-	"crypto/sha256"
+	"fmt"
 	"math/bits"
 
 	"github.com/google/uuid"
@@ -18,7 +17,11 @@ type ID []byte
 
 func XOR(a, b []byte) []byte {
 	if len(a) != len(b) {
-		panic("to calculate xor byte slices should be of equal size")
+
+		panic(fmt.Sprintf(
+			"failed to calculate xor byte slices should be of equal size: %d != %d",
+			len(a), len(b),
+		))
 	}
 	out := make([]byte, len(a))
 	for i := range a {
@@ -59,17 +62,21 @@ func Generate() PeerID {
 	return PeerID(uuid.NewString())
 }
 
-func ConvertPeerID(id PeerID, bitSize int) (hashID ID) {
-	switch bitSize {
-	case SHA256BitSize:
-		hash := sha256.Sum256([]byte(id))
-		hashID = hash[:]
-	case SHA1BitSize:
-		hash := sha1.Sum([]byte(id))
-		hashID = hash[:]
-	default:
-		panic("Not supported ID length")
-	}
-
-	return
+func ConvertPeerID(id PeerID) ID {
+	return ID([]byte(id))
 }
+
+// func ConvertPeerID(id PeerID, bitSize int) (hashID ID) {
+// 	switch bitSize {
+// 	case SHA256BitSize:
+// 		hash := sha256.Sum256([]byte(id))
+// 		hashID = hash[:]
+// 	case SHA1BitSize:
+// 		hash := sha1.Sum([]byte(id))
+// 		hashID = hash[:]
+// 	default:
+// 		panic("Not supported ID length")
+// 	}
+
+// 	return
+// }

@@ -1,4 +1,4 @@
-package simulation
+package scenario
 
 import (
 	"fmt"
@@ -37,16 +37,16 @@ type NodeSpec struct {
 	JoinOrder    int      `yaml:"join_order,omitempty"`
 }
 
-func LoadScenario(path string) (*Scenario, error) {
+func MustLoad(path string) *Scenario {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read scenario file %s: %w", path, err)
+		panic(fmt.Sprintf("failed to read scenario file %s: %w", path, err))
 	}
 
 	var s Scenario
 	if err := yaml.Unmarshal(data, &s); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal .yaml scenario %s: %w", path, err)
+		panic(fmt.Errorf("failed to unmarshal .yaml scenario %s: %w", path, err))
 	}
 
-	return &s, nil
+	return &s
 }

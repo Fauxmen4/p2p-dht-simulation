@@ -2,14 +2,16 @@ package network
 
 import (
 	"my-kad-dht/internal/addr"
-	"my-kad-dht/internal/config"
 	pid "my-kad-dht/internal/id"
 	msg "my-kad-dht/internal/message"
 	"my-kad-dht/internal/metrics"
+	cfg "my-kad-dht/internal/scenario"
 	strg "my-kad-dht/internal/storage"
 	rt "my-kad-dht/internal/table"
 	"sync"
 )
+
+
 
 type storage interface {
 	Set(key, value string)
@@ -25,9 +27,9 @@ type Node struct {
 	RoutingTable rt.RoutingTable // slice of kbuckets
 
 	// Kademlia parameters
-	kad config.Kademlia
+	kad cfg.Kademlia
 
-	// Network simulation. It stores mapping: address->node.
+	// Network cfgulation. It stores mapping: address->node.
 	// All peers can be accessed through address as in real life.
 	net *Network
 
@@ -42,32 +44,35 @@ type Node struct {
 	Metrics *metrics.Storage
 }
 
-func (n *Network) NewNode(nodeID pid.PeerID, store storage) *Node {
+func (net *Network) NewNode(nodeSpec cfg.NodeSpec, cfg cfg.Kademlia) *Node {
+	id := pid.PeerID(nodeSpec.ID)
 	node := &Node{
-		id:           nodeID,
-		addr:         addr.GenerateAddr(),
-		RoutingTable: *rt.NewRoutingTable(n.config.Kademlia.K, n.config.Kademlia.BitSize, nodeID),
+		id:           id,
+		addr:         addr.Addr(nodeSpec.Address),
+		RoutingTable: *rt.NewRoutingTable(cfg.K, cfg.BitSize, id),
 
-		kad: n.config.Kademlia,
+		kad: cfg,
 
-		net: n,
+		net: net,
 
 		inputCh: make(chan msg.Message),
 		pending: make(map[msg.MsgID]chan *msg.Response),
 
-		KVStorage: store,
+		KVStorage: strg.New(),
 		Metrics:   metrics.NewStorage(),
 	}
+
+	net.nodes[node.addr] = node
 
 	return node
 }
 
-func (n *Network) CreateNNodes(count int) []*Node {
-	nodes := make([]*Node, count)
-	for i := range len(nodes) {
+func (n *Network) CreateNNodes(nodesCfg []cfg.NodeSpec, kademliaCfg cfg.Kademlia) []*Node {
+	nodes := make([]*Node, len(nodesCfg))
+	for i := range nodes {
 		nodes[i] = n.NewNode(
-			pid.Generate(),
-			strg.New(),
+			nodesCfg[i],
+			kademliaCfg,
 		)
 	}
 	return nodes
@@ -75,6 +80,10 @@ func (n *Network) CreateNNodes(count int) []*Node {
 
 func (n *Node) ID() pid.PeerID {
 	return n.id
+}
+
+func (n *Node) Addr() addr.Addr {
+	return n.addr
 }
 
 // Run make node listening for inbound messages through the channel and handle them in sync mode (one by one)

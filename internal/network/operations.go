@@ -5,7 +5,6 @@ import (
 	pid "my-kad-dht/internal/id"
 	msg "my-kad-dht/internal/message"
 	rt "my-kad-dht/internal/table"
-	"my-kad-dht/internal/utils"
 	"time"
 
 	"github.com/google/uuid"
@@ -73,7 +72,7 @@ func (n *Node) NodeLookup(targetID pid.PeerID, k int) []rt.PeerInfo {
 			}
 		}
 
-		reduced = rt.SortClosestPeers(reduced, pid.ConvertPeerID(targetID, n.kad.BitSize))
+		reduced = rt.SortClosestPeers(reduced, pid.ConvertPeerID(targetID))
 		waitlist = make([]rt.PeerInfo, 0, n.kad.Alpha)
 		for _, nodeInfo := range reduced {
 			if _, ok := queried[nodeInfo.Id]; !ok {
@@ -104,17 +103,11 @@ const (
 	RandStrLength = 8
 )
 
-func (n *Node) StoreRandStr() (string, string) {
-	key, value := utils.RandString(6), utils.RandString(6)
-	n.Store(key, value)
-	return key, value
-}
-
 func (n *Node) Store(key, value string) {
-	targetID := pid.PeerID(key)
+	targetID := hashKey(key)
 	candidates := n.NodeLookup(targetID, n.kad.K)
 	for _, candidate := range candidates {
-		n.sendStore(key, value, candidate.Addr)
+		n.sendStore(string(targetID), value, candidate.Addr)
 	}
 }
 
@@ -134,12 +127,13 @@ func (n *Node) sendStore(key, value string, to addr.Addr) {
 }
 
 func (n *Node) FindKey(key string) (string, bool) {
-	if val, ok := n.KVStorage.Get(key); ok {
+	hKey := hashKey(key)
+	if val, ok := n.KVStorage.Get(string(hKey)); ok {
 		n.Metrics.NewSearch(key, 0, true)
 		return val, ok
 	}
 
-	value, ok, hops := n.keyLookup(key)
+	value, ok, hops := n.keyLookup(string(hKey))
 	n.Metrics.NewSearch(key, hops, ok)
 	return value, ok
 }
@@ -182,7 +176,7 @@ func (n *Node) keyLookup(key string) (string, bool, int) {
 			}
 		}
 
-		reduced = rt.SortClosestPeers(reduced, pid.ConvertPeerID(targetID, n.kad.BitSize))
+		reduced = rt.SortClosestPeers(reduced, pid.ConvertPeerID(targetID))
 		waitlist = make([]rt.PeerInfo, 0, n.kad.Alpha)
 		for _, nodeInfo := range reduced {
 			if _, ok := queried[nodeInfo.Id]; !ok {
