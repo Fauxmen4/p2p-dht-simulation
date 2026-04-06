@@ -3,6 +3,7 @@ package message
 import (
 	"my-kad-dht/core/addr"
 	pid "my-kad-dht/core/id"
+	rt "my-kad-dht/core/table"
 )
 
 type MsgID string
@@ -16,43 +17,24 @@ const (
 	FindValueType
 )
 
-type Message interface {
-	Receiver() addr.Addr
-}
-
-var (
-	_ Message = (*Request)(nil)
-	_ Message = (*Response)(nil)
-)
-
-type Request struct {
-	ID   MsgID
-	Type MsgType
-
-	Body Body
-
-	// node addrs
+type Message struct {
+	ID     MsgID
+	Type   MsgType
+	Body   any
 	To     addr.Addr
 	From   addr.Addr
 	FromID pid.PeerID
 }
 
-func (r *Request) Receiver() addr.Addr {
-	return r.To
+type FindNodeBody struct{ TargetID string }
+type FindValueBody struct{ TargetID string }
+type StoreBody struct{ Key, Value string }
+
+type FindNodeResponse struct {
+	Nearest []rt.PeerInfo
 }
 
-type Response struct {
-	ID   MsgID
-	Type MsgType
-
-	Body Body
-
-	// node addrs
-	To   addr.Addr
-	From addr.Addr
-	FromID pid.PeerID
-}
-
-func (r *Response) Receiver() addr.Addr {
-	return r.To
+type FindValueResponse struct {
+	Value   string
+	Nearest []rt.PeerInfo
 }

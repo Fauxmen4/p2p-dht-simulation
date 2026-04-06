@@ -1,4 +1,4 @@
-package network
+package node
 
 import (
 	"my-kad-dht/core/addr"
@@ -11,6 +11,8 @@ import (
 )
 
 // Useful bindings
+
+// TODO: func (n *Node) sendFindValue() {}
 
 func (n *Node) sendFind(targetID pid.PeerID, to addr.Addr, type_ msg.MsgType) (*msg.Response, bool) {
 	req := &msg.Request{
@@ -37,7 +39,20 @@ func (n *Node) sendFind(targetID pid.PeerID, to addr.Addr, type_ msg.MsgType) (*
 	}
 }
 
-// TODO: func (n *Node) sendFindValue() {}
+func (n *Node) sendStore(key, value string, to addr.Addr) {
+	msg_ := &msg.Request{
+		ID:   msg.MsgID(uuid.NewString()),
+		Type: msg.StoreType,
+
+		Body: msg.Body{Key: key, InputValue: value},
+
+		To:     to,
+		From:   n.addr,
+		FromID: n.id,
+	}
+
+	n.net.SendBlocking(msg_)
+}
 
 // Operations built above RPC API
 
@@ -105,21 +120,6 @@ func (n *Node) Store(key, value string) {
 	for _, candidate := range candidates {
 		n.sendStore(string(targetID), value, candidate.Addr)
 	}
-}
-
-func (n *Node) sendStore(key, value string, to addr.Addr) {
-	msg_ := &msg.Request{
-		ID:   msg.MsgID(uuid.NewString()),
-		Type: msg.StoreType,
-
-		Body: msg.Body{Key: key, InputValue: value},
-
-		To:     to,
-		From:   n.addr,
-		FromID: n.id,
-	}
-
-	n.net.SendBlocking(msg_)
 }
 
 func (n *Node) FindKey(key string) (string, bool) {

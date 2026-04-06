@@ -17,15 +17,15 @@ func (n *Network) DumpTopology() {
 	set := make(map[string]struct{})
 	bootstrapIds := make([]string, 0)
 	for _, node := range n.bootstrapNodes {
-		bootstrapIds = append(bootstrapIds, string(node.id))
-		set[string(node.id)] = struct{}{}
+		bootstrapIds = append(bootstrapIds, string(node.ID()))
+		set[string(node.ID())] = struct{}{}
 	}
 	data["bootstrap_nodes"] = bootstrapIds // for highlighting on graph
 
 	nodeIds := make([]string, 0)
 	for _, node := range n.nodes {
-		if _, ok := set[string(node.id)]; !ok {
-			nodeIds = append(nodeIds, string(node.id))
+		if _, ok := set[string(node.ID())]; !ok {
+			nodeIds = append(nodeIds, string(node.ID()))
 		}
 	}
 	data["nodes"] = nodeIds
@@ -35,7 +35,7 @@ func (n *Network) DumpTopology() {
 	for _, node := range n.nodes {
 		connectedIds := node.RoutingTable.ReturnAllIds()
 		for _, id := range connectedIds {
-			edge := [2]string{string(node.id), string(id)}
+			edge := [2]string{string(node.ID()), string(id)}
 			if _, ok := added[edge]; !ok {
 				edges = append(edges, edge)
 				added[edge] = struct{}{}
@@ -115,9 +115,4 @@ func dumpToJSON(dir string, data map[string]any) error {
 	}
 
 	return nil
-}
-
-func (n *Node) DumpStorage() {
-	fmt.Printf("Storage of node: %s", n.ID())
-	n.KVStorage.Print()
 }

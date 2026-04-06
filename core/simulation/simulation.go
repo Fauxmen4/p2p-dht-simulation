@@ -4,6 +4,7 @@ import (
 	"fmt"
 	pid "my-kad-dht/core/id"
 	"my-kad-dht/core/network"
+	"my-kad-dht/core/node"
 	config "my-kad-dht/core/scenario"
 	"path"
 	"strings"
@@ -50,7 +51,7 @@ func Simulation(scenarioName string) {
 	log.Info("nodes joined the network", zap.Int("count", len(scenario.Nodes)))
 
 	// extra data structure for convenience
-	nodeById := make(map[pid.PeerID]*network.Node)
+	nodeById := make(map[pid.PeerID]*node.Node)
 	for _, node := range nodes {
 		nodeById[node.ID()] = node
 	}

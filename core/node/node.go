@@ -1,6 +1,7 @@
-package network
+package node
 
 import (
+	"context"
 	"my-kad-dht/core/addr"
 	pid "my-kad-dht/core/id"
 	msg "my-kad-dht/core/message"
@@ -27,35 +28,37 @@ type Node struct {
 	// Kademlia parameters
 	kad cfg.Kademlia
 
-	// Network cfgulation. It stores mapping: address->node.
-	// All peers can be accessed through address as in real life.
-	net *Network
+	// Transport interface can send requests and wait for responses
+	transport Transport
 
 	// Mailbox for inbound messages of types network.Request.
-	inputCh chan msg.Message
+	inputCh chan *msg.Message
+
 	// Mailbox with mutex to handle a series of FIND_NODE/FIND_VALUE responses
-	pending   map[msg.MsgID]chan *msg.Response
+	pending   map[msg.MsgID]chan *msg.Message
 	pendingMu sync.Mutex
 
 	KVStorage storage
 
 	Metrics *metrics.Storage
+
+	cancel context.CancelFunc
 }
 
-func (net *Network) NewNode(nodeSpec cfg.NodeSpec, cfg cfg.Kademlia) *Node {
+func NewNode(nodeSpec cfg.NodeSpec, cfg cfg.Kademlia, t Transport) *Node {
 	id := pid.PeerID(nodeSpec.ID)
 	node := &Node{
 		id:           id,
 		addr:         addr.Addr(nodeSpec.Address),
 		RoutingTable: *rt.NewRoutingTable(cfg.K, cfg.BitSize, id),
 		kad:          cfg,
-		net:          net,
-		inputCh:      make(chan msg.Message),
-		pending:      make(map[msg.MsgID]chan *msg.Response),
+		transport:    t,
+		inputCh:      make(chan *msg.Message),
+		pending:      make(map[msg.MsgID]chan *msg.Message),
 		KVStorage:    strg.New(),
 		Metrics:      metrics.NewStorage(),
 	}
-	net.nodes[node.addr] = node
+
 	return node
 }
 
@@ -67,12 +70,16 @@ func (n *Node) Addr() addr.Addr {
 	return n.addr
 }
 
+func (n *Node) Deliver(m *msg.Message) {
+	n.inputCh <- m
+}
+
 // Run make node listening for inbound messages through the channel and handle them in sync mode (one by one)
 // ! TODO: add context.Context?
-func (n *Node) Run() {
+func (n *Node) RunV0_5() {
 	for message := range n.inputCh {
 		n.Metrics.NewRPC(false)
-		switch m := message.(type) {
+		switch body := message.Body.(type) {
 		case *msg.Request:
 			resp := n.Handle(m)
 			if resp != nil {
@@ -87,67 +94,6 @@ func (n *Node) Run() {
 			}
 		}
 	}
-}
-
-func (n *Node) Handle(req *msg.Request) *msg.Response {
-	n.RoutingTable.Add(req.FromID, req.From)
-
-	resp := &msg.Response{
-		ID:     req.ID,
-		Type:   req.Type,
-		To:     req.From,
-		From:   req.To,
-		FromID: n.id,
-	}
-
-	switch req.Type {
-	case msg.PingType:
-		// TODO:
-
-	case msg.StoreType:
-		n.store(req.Body.Key, req.Body.InputValue)
-		resp = nil
-
-	case msg.FindNodeType:
-		peersInfo := n.findNode(req.Body.ID)
-		resp.Body.NearestNodes = peersInfo
-
-	case msg.FindValueType:
-		result, ok := n.findValue(req.Body.ID)
-		if ok {
-			resp.Body.OutputValue = result.(string)
-		} else {
-			resp.Body.NearestNodes = result.([]rt.PeerInfo)
-		}
-
-	default:
-		// TODO: unknown message type error
-	}
-
-	return resp
-}
-
-func (n *Node) SendResponse(resp *msg.Response) {
-	n.Metrics.NewRPC(true)
-	n.net.Send(resp)
-}
-
-// Below Kademlia RPC API implementation
-
-func (n *Node) store(key, value string) {
-	n.KVStorage.Set(key, value)
-}
-
-func (n *Node) findNode(nodeID string) []rt.PeerInfo {
-	return n.RoutingTable.KClosestNodes(pid.PeerID(nodeID), n.kad.K)
-}
-
-func (n *Node) findValue(id string) (any, bool) {
-	if value, ok := n.KVStorage.Get(id); ok {
-		return value, true
-	}
-	nearestContacts := n.RoutingTable.KClosestNodes(pid.PeerID(id), n.kad.K)
-	return nearestContacts, false
 }
 
 // helper methods for pending requests
