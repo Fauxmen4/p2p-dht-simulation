@@ -1,10 +1,10 @@
 package network
 
 import (
-	"my-kad-dht/internal/addr"
-	pid "my-kad-dht/internal/id"
-	msg "my-kad-dht/internal/message"
-	cfg "my-kad-dht/internal/scenario"
+	"my-kad-dht/core/addr"
+	pid "my-kad-dht/core/id"
+	msg "my-kad-dht/core/message"
+	cfg "my-kad-dht/core/scenario"
 )
 
 type Network struct {

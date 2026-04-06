@@ -2,7 +2,7 @@ package routingtable
 
 import (
 	"container/list"
-	pid "my-kad-dht/internal/id"
+	pid "my-kad-dht/core/id"
 	"sort"
 )
 

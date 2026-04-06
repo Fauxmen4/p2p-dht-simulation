@@ -2,9 +2,9 @@ package simulation
 
 import (
 	"fmt"
-	pid "my-kad-dht/internal/id"
-	"my-kad-dht/internal/network"
-	config "my-kad-dht/internal/scenario"
+	pid "my-kad-dht/core/id"
+	"my-kad-dht/core/network"
+	config "my-kad-dht/core/scenario"
 	"path"
 	"strings"
 	"time"

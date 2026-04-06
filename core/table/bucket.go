@@ -2,8 +2,8 @@ package routingtable
 
 import (
 	"container/list"
-	"my-kad-dht/internal/addr"
-	pid "my-kad-dht/internal/id"
+	"my-kad-dht/core/addr"
+	pid "my-kad-dht/core/id"
 )
 
 type PeerInfo struct {

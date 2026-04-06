@@ -1,13 +1,13 @@
 package network
 
 import (
-	"my-kad-dht/internal/addr"
-	pid "my-kad-dht/internal/id"
-	msg "my-kad-dht/internal/message"
-	"my-kad-dht/internal/metrics"
-	cfg "my-kad-dht/internal/scenario"
-	strg "my-kad-dht/internal/storage"
-	rt "my-kad-dht/internal/table"
+	"my-kad-dht/core/addr"
+	pid "my-kad-dht/core/id"
+	msg "my-kad-dht/core/message"
+	"my-kad-dht/core/metrics"
+	cfg "my-kad-dht/core/scenario"
+	strg "my-kad-dht/core/storage"
+	rt "my-kad-dht/core/table"
 	"sync"
 )
 

@@ -65,18 +65,3 @@ func Generate() PeerID {
 func ConvertPeerID(id PeerID) ID {
 	return ID([]byte(id))
 }
-
-// func ConvertPeerID(id PeerID, bitSize int) (hashID ID) {
-// 	switch bitSize {
-// 	case SHA256BitSize:
-// 		hash := sha256.Sum256([]byte(id))
-// 		hashID = hash[:]
-// 	case SHA1BitSize:
-// 		hash := sha1.Sum([]byte(id))
-// 		hashID = hash[:]
-// 	default:
-// 		panic("Not supported ID length")
-// 	}
-
-// 	return
-// }

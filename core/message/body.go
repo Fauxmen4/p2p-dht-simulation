@@ -1,6 +1,6 @@
 package message
 
-import rt "my-kad-dht/internal/table"
+import rt "my-kad-dht/core/table"
 
 type MsgBody interface {
 	isBody() bool

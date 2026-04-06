@@ -3,7 +3,7 @@ package network
 import (
 	"crypto/sha1"
 	"fmt"
-	pid "my-kad-dht/internal/id"
+	pid "my-kad-dht/core/id"
 )
 
 func hashKey(key string) pid.PeerID {

@@ -1,7 +1,7 @@
 package main
 
 import (
-	"my-kad-dht/internal/simulation"
+	"my-kad-dht/core/simulation"
 	"os"
 )
 

@@ -2,8 +2,8 @@ package routingtable
 
 import (
 	"fmt"
-	"my-kad-dht/internal/addr"
-	pid "my-kad-dht/internal/id"
+	"my-kad-dht/core/addr"
+	pid "my-kad-dht/core/id"
 )
 
 type RoutingTable struct {
@@ -34,8 +34,8 @@ func NewRoutingTable(bucketSize int, bitSize int, selfID pid.PeerID) *RoutingTab
 	return rt
 }
 
-// TODO: i don't push out peerInfo in case the bucket is full cause i assume all nodes are always alive
-// TODO: FIX IT!!!!!!
+// Add adds new node contact to corresponding rounting table.
+// TODO: if it's full, nothing is added (should be pinged).
 func (rt *RoutingTable) Add(p pid.PeerID, addr addr.Addr) bool {
 	index := rt.bucketIndex(p)
 	bucket := rt.buckets[index]

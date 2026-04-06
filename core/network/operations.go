@@ -1,10 +1,10 @@
 package network
 
 import (
-	"my-kad-dht/internal/addr"
-	pid "my-kad-dht/internal/id"
-	msg "my-kad-dht/internal/message"
-	rt "my-kad-dht/internal/table"
+	"my-kad-dht/core/addr"
+	pid "my-kad-dht/core/id"
+	msg "my-kad-dht/core/message"
+	rt "my-kad-dht/core/table"
 	"time"
 
 	"github.com/google/uuid"
