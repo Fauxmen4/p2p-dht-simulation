@@ -1,6 +1,8 @@
 package network
 
 import (
+	"context"
+
 	"my-kad-dht/core/addr"
 	pid "my-kad-dht/core/id"
 	msg "my-kad-dht/core/message"
@@ -38,7 +40,7 @@ func (n *Network) Join(joinInfo cfg.NodeSpec) {
 		}
 
 		// bootstrap itself
-		targetNode.Join(targetBootNode.ID(), targetBootNode.Addr())
+		targetNode.Join(context.Background(), targetBootNode.ID(), targetBootNode.Addr())
 	}
 }
 
