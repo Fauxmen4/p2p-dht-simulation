@@ -2,6 +2,8 @@ package node
 
 import (
 	"context"
+	"sync"
+
 	"my-kad-dht/core/addr"
 	pid "my-kad-dht/core/id"
 	msg "my-kad-dht/core/message"
@@ -9,7 +11,6 @@ import (
 	cfg "my-kad-dht/core/scenario"
 	strg "my-kad-dht/core/storage"
 	rt "my-kad-dht/core/table"
-	"sync"
 )
 
 type storage interface {
@@ -30,13 +31,11 @@ type Node struct {
 
 	// Transport interface can send requests and wait for responses
 	transport Transport
-
 	// Mailbox for inbound messages of types network.Request.
 	inputCh chan *msg.Message
-
-	// Mailbox with mutex to handle a series of FIND_NODE/FIND_VALUE responses
-	pending   map[msg.MsgID]chan *msg.Message
+	// For pending messages used during operation
 	pendingMu sync.Mutex
+	pending   map[msg.MsgID]chan *msg.Message
 
 	KVStorage storage
 
@@ -70,46 +69,8 @@ func (n *Node) Addr() addr.Addr {
 	return n.addr
 }
 
+// Deliver is used in network package for async communication.
+// TODO: add context, timeouts, delays, etc.
 func (n *Node) Deliver(m *msg.Message) {
 	n.inputCh <- m
-}
-
-// Run make node listening for inbound messages through the channel and handle them in sync mode (one by one)
-// ! TODO: add context.Context?
-func (n *Node) RunV0_5() {
-	for message := range n.inputCh {
-		n.Metrics.NewRPC(false)
-		switch body := message.Body.(type) {
-		case *msg.Request:
-			resp := n.Handle(m)
-			if resp != nil {
-				n.SendResponse(resp)
-			}
-		case *msg.Response:
-			n.pendingMu.Lock()
-			ch, ok := n.pending[m.ID]
-			n.pendingMu.Unlock()
-			if ok {
-				ch <- m
-			}
-		}
-	}
-}
-
-// helper methods for pending requests
-
-func (n *Node) registerPending(id msg.MsgID) chan *msg.Response {
-	ch := make(chan *msg.Response)
-
-	n.pendingMu.Lock()
-	n.pending[id] = ch
-	n.pendingMu.Unlock()
-
-	return ch
-}
-
-func (n *Node) unregisterPending(id msg.MsgID) {
-	n.pendingMu.Lock()
-	delete(n.pending, id)
-	n.pendingMu.Unlock()
 }

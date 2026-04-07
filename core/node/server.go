@@ -18,12 +18,24 @@ func (n *Node) Run(ctx context.Context) {
 		case <-ctx.Done():
 			return
 
-		case req := <-n.inputCh:
-			n.Metrics.NewRPC(false)
-
-			resp := n.HandleRPC(req)
-			if resp != nil {
-				n.transport.SendAsync(resp.To, resp)
+		case m := <-n.inputCh:
+			if m.IsResponse {
+				n.pendingMu.Lock()
+				ch, ok := n.pending[m.ID]
+				n.pendingMu.Unlock()
+				if ok {
+					select {
+					case ch <- m: // deliver to waiting operation
+					default: // operation already cnacelled - drop silently
+					}
+				}
+			} else {
+				n.Metrics.NewRPC(false)
+				resp := n.HandleRPC(m)
+				if resp != nil {
+					resp.IsResponse = true
+					n.transport.SendAsync(resp.To, resp)
+				}
 			}
 		}
 	}
@@ -39,10 +51,11 @@ func (n *Node) HandleRPC(req *msg.Message) *msg.Message {
 	n.RoutingTable.Add(req.FromID, req.From)
 
 	resp := &msg.Message{
-		ID:   req.ID,
-		Type: req.Type,
-		To:   req.From,
-		From: req.To,
+		ID:         req.ID,
+		Type:       req.Type,
+		To:         req.From,
+		From:       req.To,
+		IsResponse: true,
 	}
 
 	switch req.Type {
