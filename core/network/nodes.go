@@ -25,23 +25,23 @@ func (net *Network) CreateNNodes(nodesCfg []cfg.NodeSpec, kademliaCfg cfg.Kademl
 func (n *Network) Join(joinInfo cfg.NodeSpec) {
 	targetNode := n.nodes[addr.Addr(joinInfo.Address)]
 
-	bootstrapNodes := make([]*node.Node, len(joinInfo.BootstrapVia))
-	for i := range bootstrapNodes {
-		// bootstrap node ID
-		bootID := joinInfo.BootstrapVia[i]
-
-		// bootstrap node searching
-		var targetBootNode *node.Node
-		for _, bootNode := range n.bootstrapNodes {
-			if bootNode.ID() == pid.PeerID(bootID) {
-				targetBootNode = bootNode
-				break
-			}
+	for _, bootID := range joinInfo.BootstrapVia {
+		bootNode := n.findByID(pid.PeerID(bootID))
+		if bootNode == nil {
+			continue
 		}
-
-		// bootstrap itself
-		targetNode.Join(context.Background(), targetBootNode.ID(), targetBootNode.Addr())
+		targetNode.Join(context.Background(), bootNode.ID(), bootNode.Addr())
 	}
+}
+
+// findByID looks up any node (bootstrap or regular) by PeerID.
+func (n *Network) findByID(id pid.PeerID) *node.Node {
+	for _, node := range n.nodes {
+		if node.ID() == id {
+			return node
+		}
+	}
+	return nil
 }
 
 // Fire-and-Forget
