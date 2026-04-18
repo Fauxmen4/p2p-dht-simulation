@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"slices"
+	"sort"
 	"strings"
 	"time"
 )
@@ -55,7 +57,7 @@ func (n *Network) DumpMetrics() {
 
 	handledRPCs := []int{}
 	sentRPCs := []int{}
-	
+
 	hopsCount := []int{}
 	success := 0
 	total := 0
@@ -79,13 +81,32 @@ func (n *Network) DumpMetrics() {
 		hopsCount = append(hopsCount, successHopCount...)
 	}
 
+	var sum float64 = 0
+	for _, hops := range hopsCount {
+		sum += float64(hops)
+	}
+	var avg float64 = sum / float64(len(hopsCount))
+	fmt.Println(avg, len(hopsCount))
+	fmt.Println("Median:", median(hopsCount))
+	fmt.Println("Percentile 0.95:", percentile(hopsCount, 0.95))
+	fmt.Println("Percentile 0.99:", percentile(hopsCount, 0.99))
+
+	sum = 0
+	for _, handled := range handledRPCs {
+		sum += float64(handled)
+	}
+	fmt.Println(
+		slices.Max(handledRPCs),
+		float64(sum) / float64(len(handledRPCs)),
+	)
+
 	data["handled_rpcs"] = handledRPCs
 	data["sent_rpcs"] = sentRPCs
 	data["key_lookups"] = map[string]any{
 		"success_hops_count": hopsCount,
-		"total": total,
-		"success": success,
-		"success_rate": success/total,
+		"total":              total,
+		"success":            success,
+		"success_rate":       success / total,
 	}
 
 	if err := dumpToJSON("metrics", data); err != nil {
@@ -115,4 +136,34 @@ func dumpToJSON(dir string, data map[string]any) error {
 	}
 
 	return nil
+}
+
+func median(data []int) float64 {
+	n := len(data)
+	if n == 0 {
+		return 0
+	}
+
+	sorted := make([]int, n)
+	copy(sorted, data)
+	sort.Ints(sorted)
+
+	if n%2 == 0 {
+		return float64(sorted[n/2-1]+sorted[n/2]) / 2
+	}
+	return float64(sorted[n/2])
+}
+
+func percentile(data []int, p float64) float64 {
+	n := len(data)
+	if n == 0 {
+		return 0
+	}
+
+	sorted := make([]int, n)
+	copy(sorted, data)
+	sort.Ints(sorted)
+
+	idx := int(float64(n-1) * p)
+	return float64(sorted[idx])
 }
