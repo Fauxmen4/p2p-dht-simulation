@@ -1,10 +1,12 @@
 package metrics
 
+// success rate
 type search struct {
 	total   int
 	success int
 }
 
+// info about one exact lookup
 type hopInfo struct {
 	key     string
 	hops    int
@@ -82,5 +84,5 @@ func (s *Storage) SuccessHopCount() []int {
 }
 
 func (s *Storage) CountKeyLookups() int {
-	return len(s.hopHistory)
+	return s.search.total
 }
