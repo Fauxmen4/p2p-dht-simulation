@@ -26,12 +26,20 @@ type Kademlia struct {
 type P2pNetwork struct {
 	NodesCount int `yaml:"nodes_count"`
 
+	// Bootstrap
 	JoinViaBootstrap bool `yaml:"join_via_bootstrap" env-default:"true"`
 	Bootstrap_count  int  `yaml:"bootstrap_count"`
 	Bootstrap_conns  int  `yaml:"bootstrap_conns"`
 }
 
+type Churn struct {
+	Phase  string  `yaml:"phase"`  // step moment when nodes leave/join: before_lookup | before_search
+	Lambda float64 `yaml:"lambda"` // how many nodes leave/join during step
+}
+
 type Workload struct {
+	Churn Churn `yaml:"churn,omitempty"`
+
 	Steps           int  `yaml:"steps"`
 	Store           bool `yaml:"store"`
 	LookupsPerStore int  `yaml:"lookups_per_store"`

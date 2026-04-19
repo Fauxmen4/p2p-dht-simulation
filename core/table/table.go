@@ -136,3 +136,8 @@ func (rt *RoutingTable) ReturnAllIds() []pid.PeerID {
 
 	return ids
 }
+
+func (rt *RoutingTable) Remove(id pid.PeerID) {
+	idx := rt.bucketIndex(id)
+	rt.buckets[idx].Remove(id)
+}

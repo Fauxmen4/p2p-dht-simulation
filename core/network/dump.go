@@ -95,10 +95,12 @@ func (n *Network) DumpMetrics() {
 	for _, handled := range handledRPCs {
 		sum += float64(handled)
 	}
-	fmt.Println(
+	fmt.Println("handled RPCs:",
 		slices.Max(handledRPCs),
-		float64(sum) / float64(len(handledRPCs)),
+		float64(sum)/float64(len(handledRPCs)),
 	)
+
+	fmt.Println("Success rate:", fmt.Sprintf("%d/%d", success, total))
 
 	data["handled_rpcs"] = handledRPCs
 	data["sent_rpcs"] = sentRPCs

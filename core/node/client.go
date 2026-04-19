@@ -2,6 +2,7 @@ package node
 
 import (
 	"context"
+	"time"
 
 	"my-kad-dht/core/addr"
 	pid "my-kad-dht/core/id"
@@ -37,6 +38,9 @@ func (n *Node) sendRPC(ctx context.Context, to addr.Addr, m *msg.Message) (*msg.
 
 	n.transport.SendAsync(to, m)
 
+	ctx, cancel := context.WithTimeout(ctx, 100*time.Millisecond)
+	defer cancel()
+
 	select {
 	case resp := <-respCh:
 		return resp, nil
@@ -66,8 +70,9 @@ func (n *Node) NodeLookup(ctx context.Context, targetID pid.PeerID, k int) []rt.
 		}
 
 		type result struct {
-			peers []rt.PeerInfo
-			ok    bool
+			peers    []rt.PeerInfo
+			deadPeer pid.PeerID
+			ok       bool
 		}
 		results := make(chan result, len(waitlist))
 
@@ -76,7 +81,7 @@ func (n *Node) NodeLookup(ctx context.Context, targetID pid.PeerID, k int) []rt.
 			go func(ni rt.PeerInfo) {
 				resp, err := n.sendRPC(ctx, ni.Addr, n.newFindNodeMsg(ni.Addr, targetID))
 				if err != nil {
-					results <- result{ok: false}
+					results <- result{deadPeer: ni.Id, ok: false}
 					return
 				}
 				body := resp.Body.(msg.FindNodeResponse)
@@ -87,10 +92,11 @@ func (n *Node) NodeLookup(ctx context.Context, targetID pid.PeerID, k int) []rt.
 		for range len(waitlist) {
 			r := <-results
 			if !r.ok {
+				n.RoutingTable.Remove(r.deadPeer)
 				continue
 			}
 			for _, peer := range r.peers {
-				// TODO: should I add all returned peers every FIND_smth RPC? 
+				// TODO: should I add all returned peers every FIND_smth RPC?
 				if peer.Id == n.id {
 					continue
 				}
@@ -143,10 +149,11 @@ func (n *Node) keyLookup(ctx context.Context, key string) (string, bool, int) {
 		hops++
 
 		type result struct {
-			value string
-			peers []rt.PeerInfo
-			found bool // true when value returned
-			ok    bool // true when RPC succeeded
+			value    string
+			peers    []rt.PeerInfo
+			deadPeer pid.PeerID
+			found    bool // true when value returned
+			ok       bool // true when RPC succeeded
 		}
 		results := make(chan result, len(waitlist))
 
@@ -159,7 +166,7 @@ func (n *Node) keyLookup(ctx context.Context, key string) (string, bool, int) {
 			go func(ni rt.PeerInfo) {
 				resp, err := n.sendRPC(roundCtx, ni.Addr, n.newFindValueMsg(ni.Addr, pid.PeerID(key)))
 				if err != nil {
-					results <- result{ok: false}
+					results <- result{deadPeer: ni.Id, ok: false}
 					return
 				}
 				switch body := resp.Body.(type) {
@@ -180,6 +187,7 @@ func (n *Node) keyLookup(ctx context.Context, key string) (string, bool, int) {
 		for range total {
 			r := <-results // always drain to avoid goroutine leaks
 			if !r.ok {
+				n.RoutingTable.Remove(r.deadPeer)
 				continue
 			}
 			if r.found && !valueFound {
@@ -190,7 +198,7 @@ func (n *Node) keyLookup(ctx context.Context, key string) (string, bool, int) {
 			}
 			if !valueFound {
 				for _, peer := range r.peers {
-					// TODO: should I add all returned peers every FIND_smth RPC? 
+					// TODO: should I add all returned peers every FIND_smth RPC?
 					if peer.Id == n.id {
 						continue
 					}
@@ -287,4 +295,3 @@ func (n *Node) newStoreMsg(to addr.Addr, key, value string) *msg.Message {
 		Body:   &msg.StoreBody{Key: key, Value: value},
 	}
 }
-

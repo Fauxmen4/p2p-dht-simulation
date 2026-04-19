@@ -5,10 +5,7 @@ import (
 	"os"
 )
 
-const (
-	scenariosDir = "data/scenarios"
-)
-
 func main() {
-	simulation.ConfigBased(os.Args[1])
+	configName := os.Args[1]
+	simulation.ConfigBased(configName)
 }

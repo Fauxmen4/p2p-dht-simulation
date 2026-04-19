@@ -9,9 +9,9 @@ import (
 )
 
 func (n *Node) Run(ctx context.Context) {
-	ctx, cancel := context.WithCancel(ctx)
-	n.cancel = cancel
-	defer cancel()
+	ctx, cancelRunning := context.WithCancel(ctx)
+	n.cancel = cancelRunning
+	defer cancelRunning()
 
 	for {
 		select {
@@ -31,7 +31,10 @@ func (n *Node) Run(ctx context.Context) {
 				}
 
 			} else { // just a single message that should be handled with API
-				n.Metrics.NewRPC(outgoing)
+				n.Metrics.NewRPC(incoming)
+
+				n.RoutingTable.Add(m.FromID, m.From)
+				
 				resp := n.HandleRPC(m)
 				if resp != nil {
 					n.transport.SendAsync(resp.To, resp)
@@ -48,8 +51,6 @@ func (n *Node) Stop() {
 }
 
 func (n *Node) HandleRPC(req *msg.Message) *msg.Message {
-	n.RoutingTable.Add(req.FromID, req.From)
-
 	resp := &msg.Message{
 		ID:         req.ID,
 		Type:       req.Type,

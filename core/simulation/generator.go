@@ -9,30 +9,38 @@ import (
 	pid "my-kad-dht/core/id"
 
 	"github.com/brianvoe/gofakeit/v7"
+	"gonum.org/v1/gonum/stat/distuv"
 )
 
 // Generator is a deterministic source of randomness
 type generator struct {
-	seed  uint64
-	rng   *rand.Rand
-	faker *gofakeit.Faker
+	seed    uint64
+	rng     *rand.Rand
+	faker   *gofakeit.Faker
+	poisson distuv.Poisson
 
 	bootstrapIDs []pid.PeerID
 }
 
 // Gnerator constructor
-func NewGenerator(seed uint64) *generator {
-	rng := rand.New(rand.NewPCG(seed, 0))
+func NewGenerator(config *cfg.Config) *generator {
+	rng := rand.New(rand.NewPCG(config.Seed, 0))
 	faker := gofakeit.NewFaker(
 		gofakeit.NewFaker(rng, false),
 		false,
 	)
 
+	poisson := distuv.Poisson{}
+	if lambda := config.Workload.Churn.Lambda; lambda != 0 {
+		poisson = distuv.Poisson{Lambda: lambda, Src: rng}
+	}
+
 	return &generator{
-		seed:         seed,
+		seed:         config.Seed,
 		rng:          rng,
 		faker:        faker,
 		bootstrapIDs: []pid.PeerID{},
+		poisson:      poisson,
 	}
 }
 
@@ -98,7 +106,7 @@ func (g *generator) nBootstrapNodes(n int) []cfg.NodeSpec {
 
 // Generate random data for number of nodes from config.
 // Differs from nBootstrapNodes by bootstrap nodes choice.
-func (g *generator) nNodes(cfg config.P2pNetwork) []cfg.NodeSpec {
+func (g *generator) nNewNodes(cfg config.P2pNetwork) []cfg.NodeSpec {
 	nodes := make([]config.NodeSpec, cfg.NodesCount)
 	for i := range cfg.NodesCount {
 		ID := g.id()
@@ -107,12 +115,22 @@ func (g *generator) nNodes(cfg config.P2pNetwork) []cfg.NodeSpec {
 			Addr:         g.addr(),
 			BootstrapVia: g.randomBootstrapIDs(cfg.Bootstrap_conns),
 		}
-		if !cfg.JoinViaBootstrap {
-			g.addBootstrapID(ID)
-		}
+		// if !cfg.JoinViaBootstrap {
+		// 	g.addBootstrapID(ID)
+		// }
 	}
 	return nodes
 }
+
+func (g *generator) newNode(cfg config.P2pNetwork) config.NodeSpec {
+	return config.NodeSpec{
+		ID:           g.id(),
+		Addr:         g.addr(),
+		BootstrapVia: g.randomBootstrapIDs(cfg.Bootstrap_conns),
+	}
+}
+
+// Publish data generation
 
 const (
 	keySize   = 8
@@ -131,4 +149,14 @@ func (g *generator) randString(n int) string {
 
 func (g *generator) randKV() (string, string) {
 	return g.randString(keySize), g.randString(valueSize)
+}
+
+// Poisson distribution sampling
+
+func (g *generator) isChurn() bool {
+	return g.poisson != distuv.Poisson{}
+}
+
+func (g *generator) poissonSample() int {
+	return int(g.poisson.Rand())
 }
