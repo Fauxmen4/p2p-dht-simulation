@@ -4,7 +4,7 @@ import (
 	"context"
 	"my-kad-dht/core/addr"
 	"my-kad-dht/core/node"
-	cfg "my-kad-dht/core/scenario"
+	cfg "my-kad-dht/core/config"
 )
 
 type Network struct {

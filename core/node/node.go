@@ -2,15 +2,14 @@ package node
 
 import (
 	"context"
-	"sync"
-
 	"my-kad-dht/core/addr"
+	cfg "my-kad-dht/core/config"
 	pid "my-kad-dht/core/id"
 	msg "my-kad-dht/core/message"
 	"my-kad-dht/core/metrics"
-	cfg "my-kad-dht/core/scenario"
 	strg "my-kad-dht/core/storage"
 	rt "my-kad-dht/core/table"
+	"sync"
 )
 
 const (
@@ -35,10 +34,8 @@ type Node struct {
 	id           pid.PeerID
 	addr         addr.Addr       // network address
 	RoutingTable rt.RoutingTable // slice of kbuckets
-
 	// Kademlia parameters
 	kad cfg.Kademlia
-
 	// Transport interface can send requests and wait for responses
 	transport Transport
 	// Mailbox for inbound messages of types network.Request.
@@ -48,17 +45,15 @@ type Node struct {
 	pending   map[msg.MsgID]chan *msg.Message
 
 	KVStorage storage
-
-	Metrics *metrics.Storage
+	Metrics   *metrics.Storage
 
 	cancel context.CancelFunc
 }
 
-func NewNode(nodeSpec cfg.NodeSpec, cfg cfg.Kademlia, t Transport) *Node {
-	id := pid.PeerID(nodeSpec.ID)
+func NewNode(id pid.PeerID, addr addr.Addr, cfg cfg.Kademlia, t Transport) *Node {
 	node := &Node{
 		id:           id,
-		addr:         addr.Addr(nodeSpec.Address),
+		addr:         addr,
 		RoutingTable: *rt.NewRoutingTable(cfg.K, cfg.BitSize, id),
 		kad:          cfg,
 		transport:    t,

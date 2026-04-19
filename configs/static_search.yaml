@@ -2,9 +2,13 @@ seed: 42
 
 kademlia:
   bit_size: 160
-  k: 10
-  alpha: 3
-  beta: 3
+  k:        10
+  alpha:    3
+  beta:     3
+
+# physical_network:
+#   drop_rate:   0
+#   latency_ms:  0
 
 network:
   nodes_count: 100
@@ -15,5 +19,5 @@ network:
 
 workload:
   steps: 20
-  stores_per_step: 1
+  store: true
   lookups_per_store: 1

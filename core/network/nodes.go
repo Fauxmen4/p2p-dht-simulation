@@ -4,16 +4,16 @@ import (
 	"context"
 
 	"my-kad-dht/core/addr"
+	cfg "my-kad-dht/core/config"
 	pid "my-kad-dht/core/id"
 	msg "my-kad-dht/core/message"
 	"my-kad-dht/core/node"
-	cfg "my-kad-dht/core/scenario"
 )
 
 func (net *Network) CreateNNodes(nodesCfg []cfg.NodeSpec, kademliaCfg cfg.Kademlia) []*node.Node {
 	nodes := make([]*node.Node, len(nodesCfg))
 	for i := range nodes {
-		curr := node.NewNode(nodesCfg[i], kademliaCfg, net)
+		curr := node.NewNode(nodesCfg[i].ID, nodesCfg[i].Addr, kademliaCfg, net)
 		net.nodes[curr.Addr()] = curr
 		nodes[i] = curr
 	}
@@ -23,10 +23,10 @@ func (net *Network) CreateNNodes(nodesCfg []cfg.NodeSpec, kademliaCfg cfg.Kademl
 // Join make corresponding node send FIND_NODE(selfID)
 // to target bootstrap node according to provided NodeSpec.
 func (n *Network) Join(joinInfo cfg.NodeSpec) {
-	targetNode := n.nodes[addr.Addr(joinInfo.Address)]
+	targetNode := n.nodes[addr.Addr(joinInfo.Addr)]
 
 	for _, bootID := range joinInfo.BootstrapVia {
-		bootNode := n.findByID(pid.PeerID(bootID))
+		bootNode := n.findByID(bootID)
 		if bootNode == nil {
 			continue
 		}
