@@ -46,5 +46,7 @@ func (n *Network) findByID(id pid.PeerID) *node.Node {
 
 // Fire-and-Forget
 func (net *Network) SendAsync(to addr.Addr, m *msg.Message) {
-	go net.nodes[to].Deliver(m)
+	go func() {
+		net.nodes[to].InputCh() <- m
+	}()
 }

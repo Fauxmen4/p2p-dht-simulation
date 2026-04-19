@@ -13,11 +13,21 @@ import (
 	rt "my-kad-dht/core/table"
 )
 
+const (
+	incoming = true
+	outgoing = false
+)
+
 type storage interface {
 	Set(key, value string)
 	Get(key string) (string, bool)
 	Delete(key string)
 	Print()
+}
+
+type Transport interface {
+	// SendAsync delivers a message in a fire-and-forget manner.
+	SendAsync(to addr.Addr, m *msg.Message)
 }
 
 type Node struct {
@@ -69,8 +79,6 @@ func (n *Node) Addr() addr.Addr {
 	return n.addr
 }
 
-// Deliver is used in network package for async communication.
-// TODO: add context, timeouts, delays, etc.
-func (n *Node) Deliver(m *msg.Message) {
-	n.inputCh <- m
+func (n *Node) InputCh() chan *msg.Message {
+	return n.inputCh
 }

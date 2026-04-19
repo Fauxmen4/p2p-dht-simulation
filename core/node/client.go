@@ -21,6 +21,8 @@ Operations in "client" mode:
 */
 
 func (n *Node) sendRPC(ctx context.Context, to addr.Addr, m *msg.Message) (*msg.Message, error) {
+	n.Metrics.NewRPC(outgoing)
+
 	respCh := make(chan *msg.Message, 1) // buffered — dispatcher never blocks
 
 	n.pendingMu.Lock()
@@ -88,6 +90,7 @@ func (n *Node) NodeLookup(ctx context.Context, targetID pid.PeerID, k int) []rt.
 				continue
 			}
 			for _, peer := range r.peers {
+				// TODO: should I add all returned peers every FIND_smth RPC? 
 				if peer.Id == n.id {
 					continue
 				}
@@ -187,6 +190,7 @@ func (n *Node) keyLookup(ctx context.Context, key string) (string, bool, int) {
 			}
 			if !valueFound {
 				for _, peer := range r.peers {
+					// TODO: should I add all returned peers every FIND_smth RPC? 
 					if peer.Id == n.id {
 						continue
 					}
@@ -221,7 +225,7 @@ func (n *Node) keyLookup(ctx context.Context, key string) (string, bool, int) {
 
 // FindKey looks up the value for key. Checks local storage first, then
 // performs an iterative keyLookup across the network.
-func (n *Node) FindKey(ctx context.Context, key string) (string, bool) {
+func (n *Node) ValueLookup(ctx context.Context, key string) (string, bool) {
 	hKey := hashKey(key)
 	if val, ok := n.KVStorage.Get(string(hKey)); ok {
 		n.Metrics.NewSearch(key, 0, true)
@@ -233,8 +237,8 @@ func (n *Node) FindKey(ctx context.Context, key string) (string, bool) {
 	return value, ok
 }
 
-// Store finds the k closest nodes to hash(key) and sends STORE to each.
-// STORE is fire-and-forget so responses are not awaited.
+// Store finds the k closest nodes to hash(key) and sends STORE to each
+// in fire-and-forget manner.
 func (n *Node) Store(ctx context.Context, key, value string) {
 	targetID := hashKey(key)
 	candidates := n.NodeLookup(ctx, targetID, n.kad.K)
@@ -284,9 +288,3 @@ func (n *Node) newStoreMsg(to addr.Addr, key, value string) *msg.Message {
 	}
 }
 
-func capped(peers []rt.PeerInfo, k int) []rt.PeerInfo {
-	if len(peers) <= k {
-		return peers
-	}
-	return peers[:k]
-}

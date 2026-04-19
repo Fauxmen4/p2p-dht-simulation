@@ -26,14 +26,14 @@ func (n *Node) Run(ctx context.Context) {
 				if ok {
 					select {
 					case ch <- m: // deliver to waiting operation
-					default: // operation already cnacelled - drop silently
+					default: // operation already cancelled - drop silently
 					}
 				}
-			} else {
-				n.Metrics.NewRPC(false)
+
+			} else { // just a single message that should be handled with API
+				n.Metrics.NewRPC(outgoing)
 				resp := n.HandleRPC(m)
 				if resp != nil {
-					resp.IsResponse = true
 					n.transport.SendAsync(resp.To, resp)
 				}
 			}
@@ -59,8 +59,7 @@ func (n *Node) HandleRPC(req *msg.Message) *msg.Message {
 	}
 
 	switch req.Type {
-	case msg.PingType:
-		// add nothing
+	case msg.PingType: // in PING case do nothing
 
 	case msg.StoreType:
 		body := req.Body.(*msg.StoreBody)
@@ -93,13 +92,13 @@ func (n *Node) store(key, value string) {
 }
 
 func (n *Node) findNode(nodeID string) []rt.PeerInfo {
-	return n.RoutingTable.KClosestNodes(pid.PeerID(nodeID), n.kad.K)
+	return n.RoutingTable.KClosestNodes(pid.PeerID(nodeID), n.kad.Beta)
 }
 
 func (n *Node) findValue(id string) (any, bool) {
 	if value, ok := n.KVStorage.Get(id); ok {
 		return value, true
 	}
-	nearestContacts := n.RoutingTable.KClosestNodes(pid.PeerID(id), n.kad.K)
+	nearestContacts := n.RoutingTable.KClosestNodes(pid.PeerID(id), n.kad.Beta)
 	return nearestContacts, false
 }
