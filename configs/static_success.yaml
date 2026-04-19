@@ -2,17 +2,17 @@ seed: 42
 
 kademlia:
   bit_size: 160
-  k:        10
+  k:        8
   alpha:    3
   beta:     3
 
 network:
-  nodes_count: 100
+  nodes_count: 1000
   # drop_rate:   0
   # latency_ms:  0
   bootstrap:
-    nodes_count:       2
+    nodes_count:       5
     connections_count: 2
 
 workload:
-  publications: 80
+  publications: 100

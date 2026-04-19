@@ -103,22 +103,25 @@ func main() {
 
 	// nodes
 	n = cfg.Network.NodesCount
-	nodes := make([]node, n)
+	nodes := make([]node, 0, n)
 	for i := range n {
+		// pool = dedicated bootstrap nodes + all regular nodes joined so far
+		pool := append(bootstrapNodes, nodes...)
 		iNode := node{
 			ID:           generator.ID(),
 			Address:      generator.Addr(),
 			JoinOrder:    i + 1,
-			BootstrapVia: generator.RandomNodes(bootstrapNodes, cfg.Network.Bootstrap.Connections_count),
+			BootstrapVia: generator.RandomNodes(pool, cfg.Network.Bootstrap.Connections_count),
 		}
-		nodes[i] = iNode
+		nodes = append(nodes, iNode)
 	}
 	writer.WriteSection("nodes", nodes)
 
 	// workload: publish & search
 	n = cfg.Workload.Publications
 	actions := make([]action, n*2)
-	for i := range n {
+
+	for i := 0; i < 2*n; i += 2 {
 		publ := action{
 			Step:       i + 1,
 			ActionType: "store",
@@ -127,8 +130,6 @@ func main() {
 			Executor:   generator.RandomNode(nodes),
 		}
 		actions[i] = publ
-	}
-
 	for i := range n {
 		search := action{
 			Step:       i + 1 + n,
@@ -137,7 +138,9 @@ func main() {
 			Value:      actions[i].Value,
 			Executor:   generator.RandomNode(nodes),
 		}
-		actions[i+n] = search
+		actions[i+1] = search	}
+
+
 	}
 	writer.WriteSection("workload", actions)
 }

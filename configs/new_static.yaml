@@ -1,0 +1,19 @@
+seed: 42
+
+kademlia:
+  bit_size: 160
+  k: 10
+  alpha: 3
+  beta: 3
+
+network:
+  nodes_count: 100
+  
+  only_bootstrap_join: true
+  bootstrap_count: 3
+  bootstrap_conns: 2
+
+workload:
+  steps: 20
+  stores_per_step: 1
+  lookups_per_store: 1

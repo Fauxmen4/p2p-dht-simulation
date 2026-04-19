@@ -1,11 +1,12 @@
 package simulation
 
 import (
+	"context"
 	"fmt"
 	pid "my-kad-dht/core/id"
 	"my-kad-dht/core/network"
 	"my-kad-dht/core/node"
-	config "my-kad-dht/core/scenario"
+	cfg "my-kad-dht/core/scenario"
 	"path"
 	"strings"
 	"time"
@@ -17,7 +18,7 @@ const (
 	ScenariosDir = "data/scenarios"
 )
 
-func Simulation(scenarioName string) {
+func ScenarioBased(scenarioName string) {
 	// logger
 	log := zap.Must(zap.NewDevelopment())
 
@@ -25,7 +26,7 @@ func Simulation(scenarioName string) {
 	if !strings.HasSuffix(scenarioName, ".yaml") {
 		scenarioName = fmt.Sprintf("%s.yaml", scenarioName)
 	}
-	scenario := config.MustLoad(path.Join(ScenariosDir, scenarioName))
+	scenario := cfg.MustLoad(path.Join(ScenariosDir, scenarioName))
 
 	// init network: create bootstrap nodes
 	net := network.New(scenario.Kademlia, scenario.BootstrapNodes)
@@ -41,12 +42,11 @@ func Simulation(scenarioName string) {
 	// nodes join network
 	nodes := net.CreateNNodes(scenario.Nodes, scenario.Kademlia)
 	for i, joinInfo := range scenario.Nodes {
-		net.Join(joinInfo)
-
-		time.Sleep(10 * time.Millisecond)
 		go func() {
-			nodes[i].Run()
+			nodes[i].Run(context.Background())
 		}()
+		time.Sleep(10 * time.Millisecond) // give Run() time to start before Join sends RPCs
+		net.Join(joinInfo)
 	}
 	log.Info("nodes joined the network", zap.Int("count", len(scenario.Nodes)))
 
@@ -64,11 +64,13 @@ func Simulation(scenarioName string) {
 		node := nodeById[pid.PeerID(action.Executor)]
 		switch action.Type {
 		case "store":
-			node.Store(action.Key, action.Value)
+			node.Store(context.Background(), action.Key, action.Value)
 		case "search":
-			node.FindKey(action.Key)
+			node.ValueLookup(context.Background(), action.Key)
 		}
 	}
+
+	log.Info("workload ended (data was found)")
 
 	// save results
 	net.DumpTopology()

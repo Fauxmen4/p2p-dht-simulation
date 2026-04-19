@@ -10,5 +10,5 @@ const (
 )
 
 func main() {
-	simulation.Simulation(os.Args[1])
+	simulation.ConfigBased(os.Args[1])
 }
