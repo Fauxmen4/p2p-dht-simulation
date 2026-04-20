@@ -33,12 +33,11 @@ func (n *Node) Run(ctx context.Context) {
 			} else { // just a single message that should be handled with API
 				n.Metrics.NewRPC(incoming)
 
-				n.RoutingTable.Add(m.FromID, m.From)
+				n.RoutingTable.MoveToBack(m.FromID)
+				n.addContact(m.FromID, m.From)
 				
 				resp := n.HandleRPC(m)
-				if resp != nil {
-					n.transport.SendAsync(resp.To, resp)
-				}
+				n.transport.SendAsync(resp.To, resp)
 			}
 		}
 	}
@@ -60,12 +59,13 @@ func (n *Node) HandleRPC(req *msg.Message) *msg.Message {
 	}
 
 	switch req.Type {
-	case msg.PingType: // in PING case do nothing
+	case msg.PingType:
+		resp.Success = true
 
 	case msg.StoreType:
 		body := req.Body.(*msg.StoreBody)
 		n.store(body.Key, body.Value)
-		resp = nil
+		resp.Success = true
 
 	case msg.FindNodeType:
 		body := req.Body.(*msg.FindNodeBody)

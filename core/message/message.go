@@ -24,9 +24,12 @@ type Message struct {
 	To     addr.Addr
 	From   addr.Addr
 	FromID pid.PeerID
+	
 	// IsResponse == true if it's already handled message
 	// and should be passed to client operation function
 	IsResponse bool
+	
+	Success bool // equals true in case of successful PING/STORE
 }
 
 type FindNodeBody struct{ TargetID string }

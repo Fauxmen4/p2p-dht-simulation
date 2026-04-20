@@ -11,9 +11,11 @@ import (
 type Config struct {
 	Seed uint64 `yaml:"seed"`
 
-	Kademlia Kademlia   `yaml:"kademlia"`
-	Network  P2pNetwork `yaml:"network"`
-	Workload Workload   `yaml:"workload,omitempty"`
+	Kademlia Kademlia `yaml:"kademlia"`
+
+	Network P2pNetwork `yaml:"network"`
+
+	Workload Workload `yaml:"workload,omitempty"`
 }
 
 type Kademlia struct {

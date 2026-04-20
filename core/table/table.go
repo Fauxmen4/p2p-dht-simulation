@@ -4,9 +4,12 @@ import (
 	"fmt"
 	"my-kad-dht/core/addr"
 	pid "my-kad-dht/core/id"
+	"sync"
 )
 
 type RoutingTable struct {
+	mu sync.RWMutex
+
 	// ID of the peer who is owner of this routing table
 	selfID    pid.PeerID
 	selfDhtId pid.ID
@@ -34,13 +37,44 @@ func NewRoutingTable(bucketSize int, bitSize int, selfID pid.PeerID) *RoutingTab
 	return rt
 }
 
+// LeastRecentlySeen returns earliest seen peer or (nil, false)
+func (rt *RoutingTable) LeastRecentlySeen(p pid.PeerID) (PeerInfo, bool) {
+	rt.mu.RLock()
+	defer rt.mu.RUnlock()
+	b := rt.buckets[rt.bucketIndex(p)]
+	if b.Len() < rt.bucketSize {
+		return PeerInfo{}, false
+	}
+	front := b.list.Front()
+	if front == nil {
+		return PeerInfo{}, false
+	}
+	return front.Value.(PeerInfo), true
+}
+
+func (rt *RoutingTable) MoveToBack(p pid.PeerID) {
+	rt.mu.Lock()
+	defer rt.mu.Unlock()
+	b := rt.buckets[rt.bucketIndex(p)]
+	for e := b.list.Front(); e != nil; e = e.Next() {
+		if e.Value.(PeerInfo).Id == p {
+			b.list.MoveToBack(e)
+			return
+		}
+	}
+}
+
 // Add adds new node contact to corresponding rounting table.
-// TODO: if it's full, nothing is added (should be pinged).
 func (rt *RoutingTable) Add(p pid.PeerID, addr addr.Addr) bool {
+	rt.mu.Lock()
+	defer rt.mu.Unlock()
+	return rt.addLocked(p, addr)
+}
+
+func (rt *RoutingTable) addLocked(p pid.PeerID, addr addr.Addr) bool {
 	index := rt.bucketIndex(p)
 	bucket := rt.buckets[index]
 
-	// check if peer is already in table
 	if peerInfo := bucket.Get(p); peerInfo.Id != "" {
 		return false
 	}
@@ -59,6 +93,8 @@ func (rt *RoutingTable) Add(p pid.PeerID, addr addr.Addr) bool {
 
 // KClosestNodes returns k nodes with IDs closest to target id
 func (rt *RoutingTable) KClosestNodes(target pid.PeerID, k int) []PeerInfo {
+	rt.mu.RLock()
+	defer rt.mu.RUnlock()
 	targetID := pid.ConvertPeerID(target)
 	cpl := pid.CommonPrefixLen(targetID, rt.selfDhtId)
 	//? useless check
@@ -99,6 +135,8 @@ func (rt *RoutingTable) KClosestNodes(target pid.PeerID, k int) []PeerInfo {
 }
 
 func (rt *RoutingTable) Print() {
+	rt.mu.RLock()
+	defer rt.mu.RUnlock()
 	fmt.Printf("Routing table of NodeID: %s with bucketSize: %d\n", rt.selfID, rt.bucketSize)
 	fmt.Printf("Total buckets: %d\n", len(rt.buckets))
 	for i, b := range rt.buckets {
@@ -127,6 +165,8 @@ func (rt *RoutingTable) bucketIndex(p pid.PeerID) int {
 
 // ReturnAllIds returns a list of ids from every node's kbucket
 func (rt *RoutingTable) ReturnAllIds() []pid.PeerID {
+	rt.mu.RLock()
+	defer rt.mu.RUnlock()
 	ids := make([]pid.PeerID, 0)
 	for _, b := range rt.buckets {
 		for e := b.list.Front(); e != nil; e = e.Next() {
@@ -138,6 +178,32 @@ func (rt *RoutingTable) ReturnAllIds() []pid.PeerID {
 }
 
 func (rt *RoutingTable) Remove(id pid.PeerID) {
+	rt.mu.Lock()
+	defer rt.mu.Unlock()
 	idx := rt.bucketIndex(id)
 	rt.buckets[idx].Remove(id)
+}
+
+func (rt *RoutingTable) BucketIndex(p pid.PeerID) int {
+	rt.mu.RLock()
+	defer rt.mu.RUnlock()
+	return rt.bucketIndex(p)
+}
+
+// ReplaceIfDead atomically checks LRS, and if it's the same peer, replaces it with newP.
+// Returns true if replacement happened.
+func (rt *RoutingTable) ReplaceIfDead(lrsID pid.PeerID, newP pid.PeerID, newAddr addr.Addr) bool {
+	rt.mu.Lock()
+	defer rt.mu.Unlock()
+	idx := rt.bucketIndex(newP)
+	b := rt.buckets[idx]
+	front := b.list.Front()
+	if front == nil {
+		return false
+	}
+	if front.Value.(PeerInfo).Id != lrsID {
+		return false // кто-то уже заменил до нас
+	}
+	b.list.Remove(front)
+	return rt.addLocked(newP, newAddr)
 }

@@ -10,6 +10,7 @@ import (
 	strg "my-kad-dht/core/storage"
 	rt "my-kad-dht/core/table"
 	"sync"
+	"time"
 )
 
 const (
@@ -76,4 +77,55 @@ func (n *Node) Addr() addr.Addr {
 
 func (n *Node) InputCh() chan *msg.Message {
 	return n.inputCh
+}
+
+func (n *Node) sendRPC(ctx context.Context, to addr.Addr, m *msg.Message) (*msg.Message, error) {
+	n.Metrics.NewRPC(outgoing)
+
+	respCh := make(chan *msg.Message, 1) // buffered — dispatcher never blocks
+
+	n.pendingMu.Lock()
+	n.pending[m.ID] = respCh
+	n.pendingMu.Unlock()
+
+	defer func() {
+		n.pendingMu.Lock()
+		delete(n.pending, m.ID)
+		n.pendingMu.Unlock()
+	}()
+
+	n.transport.SendAsync(to, m)
+
+	ctx, cancel := context.WithTimeout(ctx, 100*time.Millisecond)
+	defer cancel()
+
+	select {
+	case resp := <-respCh:
+		return resp, nil
+	case <-ctx.Done():
+		return nil, ctx.Err() // late responses will hit `default` in dispatcher
+	}
+}
+
+func (n *Node) addContact(id pid.PeerID, address addr.Addr) {
+    if n.RoutingTable.Add(id, address) {
+        return
+    }
+
+    lrs, ok := n.RoutingTable.LeastRecentlySeen(id)
+    if !ok {
+        return
+    }
+
+	//! is it correct to do it async way?
+    // ping earliest seen and replace it in case its dead
+    go func() {
+        ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
+        defer cancel()
+        if n.Ping(ctx, lrs) {
+            n.RoutingTable.MoveToBack(lrs.Id)
+        } else {
+            n.RoutingTable.ReplaceIfDead(lrs.Id, id, address)
+        }
+    }()
 }

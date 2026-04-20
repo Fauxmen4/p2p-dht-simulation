@@ -27,28 +27,25 @@ func (s *simState) step() {
 	}
 
 	// workload
-	// choose nodes for workload
-	nWorkingNodes := s.cfg.Workload.LookupsPerStore
-	if s.cfg.Workload.Store {
-		nWorkingNodes += 1
-	}
-	workingNodes := randomN(s.gen.rng, s.nodes, nWorkingNodes)
 
 	// publish
 	key, value := s.gen.randKV()
 	s.kvData = append(s.kvData, [2]string{key, value})
-	workingNodes[0].Store(context.Background(), key, value)
+	publisher := randomN(s.gen.rng, s.nodes, 1)[0]
+	publisher.Store(context.Background(), key, value)
 
 	// b). churn
 	if s.gen.isChurn() && s.cfg.Workload.Churn.Phase == "before_search" {
 		s.applyChurn()
 	}
 
-	fmt.Println("seacrhing")
+	fmt.Println("seacrhing", key) //! LOGGING
 
+	// choose nodes
+	searchers := randomN(s.gen.rng, s.nodes, s.cfg.Workload.LookupsPerStore)
 	// search
-	for i := 1; i < len(workingNodes); i++ {
-		workingNodes[i].ValueLookup(context.Background(), key)
+	for i := range searchers {
+		searchers[i].ValueLookup(context.Background(), key)
 	}
 }
 
@@ -71,7 +68,7 @@ func (s *simState) applyChurn() {
 	}
 	s.nodes = survived
 
-	fmt.Println(k, "nodes left")
+	fmt.Println(k, "nodes left") //! LOGGING
 
 	start := time.Now()
 
@@ -82,7 +79,7 @@ func (s *simState) applyChurn() {
 		s.nodes = append(s.nodes, newNode)
 	}
 
-	fmt.Println(k, "nodes joined", "after", time.Since(start).Seconds())
+	fmt.Println(k, "nodes joined", "after", time.Since(start).Seconds()) //! LOGGING
 
 }
 
