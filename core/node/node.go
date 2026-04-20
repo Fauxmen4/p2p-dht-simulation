@@ -108,24 +108,25 @@ func (n *Node) sendRPC(ctx context.Context, to addr.Addr, m *msg.Message) (*msg.
 }
 
 func (n *Node) addContact(id pid.PeerID, address addr.Addr) {
-    if n.RoutingTable.Add(id, address) {
-        return
-    }
+	if n.RoutingTable.Add(id, address) {
+		return
+	}
 
-    lrs, ok := n.RoutingTable.LeastRecentlySeen(id)
-    if !ok {
-        return
-    }
+	// lrs, ok := n.RoutingTable.LeastRecentlySeen(id)
+	lrs, ok := n.RoutingTable.LeastRecentlySeenDiverse(id)
+	if !ok {
+		return
+	}
 
 	//! is it correct to do it async way?
-    // ping earliest seen and replace it in case its dead
-    go func() {
-        ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
-        defer cancel()
-        if n.Ping(ctx, lrs) {
-            n.RoutingTable.MoveToBack(lrs.Id)
-        } else {
-            n.RoutingTable.ReplaceIfDead(lrs.Id, id, address)
-        }
-    }()
+	// ping earliest seen and replace it in case its dead
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
+		defer cancel()
+		if n.Ping(ctx, lrs) {
+			n.RoutingTable.MoveToBack(lrs.Id)
+		} else {
+			n.RoutingTable.ReplaceIfDead(lrs.Id, id, address)
+		}
+	}()
 }

@@ -2,7 +2,7 @@ seed: 42
 
 kademlia:
   bit_size: 160
-  k:        4
+  k:        20
   alpha:    3
   beta:     3
 
@@ -15,15 +15,12 @@ network:
   bootstrap_count: 5
   bootstrap_conns: 2
 
+workload:
+  steps: 100
+  store: true
+  lookups_per_store: 5
+
 # latency:
 #   slow_fraction: 0.2
 #   fast_ms: 1
 #   slow_ms: 10
-
-workload:
-  steps: 10
-  store: true
-  lookups_per_store: 20
-  churn:
-    phase: before_search    # before_lookup | before_search
-    lambda: 50

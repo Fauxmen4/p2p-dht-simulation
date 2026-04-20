@@ -2,18 +2,18 @@ seed: 42
 
 kademlia:
   bit_size: 160
-  k:        10
+  k:        20
   alpha:    3
   beta:     3
 
 network:
-  nodes_count: 500
+  nodes_count: 1000
 
 #   drop_rate:   0
 
   only_bootstrap_join: true
   bootstrap_count: 5
-  bootstrap_conns: 3
+  bootstrap_conns: 2
 
 workload:
   steps: 100

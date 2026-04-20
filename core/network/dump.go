@@ -86,7 +86,7 @@ func (n *Network) DumpMetrics() {
 		sum += float64(hops)
 	}
 	var avg float64 = sum / float64(len(hopsCount))
-	fmt.Println(avg, len(hopsCount))
+	fmt.Println("Mean hops:", avg, "Total:", len(hopsCount))
 	fmt.Println("Median:", median(hopsCount))
 	fmt.Println("Percentile 0.95:", percentile(hopsCount, 0.95))
 	fmt.Println("Percentile 0.99:", percentile(hopsCount, 0.99))
