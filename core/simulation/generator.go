@@ -7,6 +7,7 @@ import (
 	"my-kad-dht/core/config"
 	cfg "my-kad-dht/core/config"
 	pid "my-kad-dht/core/id"
+	"time"
 
 	"github.com/brianvoe/gofakeit/v7"
 	"gonum.org/v1/gonum/stat/distuv"
@@ -90,13 +91,15 @@ func (g *generator) addBootstrapID(id pid.PeerID) {
 }
 
 // Generate random data for n bootstrap nodes.
-func (g *generator) nBootstrapNodes(n int) []cfg.NodeSpec {
+func (g *generator) nBootstrapNodes(config *config.Config) []cfg.NodeSpec {
+	n := config.Network.Bootstrap_count
 	nodes := make([]cfg.NodeSpec, 0, n)
 	for range n {
 		ID := g.id()
 		nodes = append(nodes, cfg.NodeSpec{
-			ID:   ID,
-			Addr: g.addr(),
+			ID:      ID,
+			Addr:    g.addr(),
+			Latency: g.assignLatency(config.Latency),
 		})
 		g.bootstrapIDs = append(g.bootstrapIDs, ID)
 	}
@@ -106,14 +109,15 @@ func (g *generator) nBootstrapNodes(n int) []cfg.NodeSpec {
 
 // Generate random data for number of nodes from config.
 // Differs from nBootstrapNodes by bootstrap nodes choice.
-func (g *generator) nNewNodes(cfg config.P2pNetwork) []cfg.NodeSpec {
-	nodes := make([]config.NodeSpec, cfg.NodesCount)
-	for i := range cfg.NodesCount {
+func (g *generator) nNewNodes(cfg *config.Config) []cfg.NodeSpec {
+	nodes := make([]config.NodeSpec, cfg.Network.NodesCount)
+	for i := range cfg.Network.NodesCount {
 		ID := g.id()
 		nodes[i] = config.NodeSpec{
 			ID:           ID,
 			Addr:         g.addr(),
-			BootstrapVia: g.randomBootstrapIDs(cfg.Bootstrap_conns),
+			BootstrapVia: g.randomBootstrapIDs(cfg.Network.Bootstrap_conns),
+			Latency:      g.assignLatency(cfg.Latency),
 		}
 		// if !cfg.JoinViaBootstrap {
 		// 	g.addBootstrapID(ID)
@@ -122,12 +126,27 @@ func (g *generator) nNewNodes(cfg config.P2pNetwork) []cfg.NodeSpec {
 	return nodes
 }
 
-func (g *generator) newNode(cfg config.P2pNetwork) config.NodeSpec {
+func (g *generator) newNode(cfg *config.Config) config.NodeSpec {
 	return config.NodeSpec{
 		ID:           g.id(),
 		Addr:         g.addr(),
-		BootstrapVia: g.randomBootstrapIDs(cfg.Bootstrap_conns),
+		BootstrapVia: g.randomBootstrapIDs(cfg.Network.Bootstrap_conns),
 	}
+}
+
+func (g *generator) assignLatency(cfg config.Latency) time.Duration {
+	if cfg.SlowMs == 0 {
+		return 0
+	}
+
+	var baseMs int
+	if g.rng.Float64() < cfg.SlowFraction {
+		baseMs = cfg.SlowMs
+	} else {
+		baseMs = cfg.FastMs
+	}
+	base := time.Duration(baseMs) * time.Millisecond
+	return base
 }
 
 // Publish data generation

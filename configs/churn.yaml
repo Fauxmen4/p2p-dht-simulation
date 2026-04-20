@@ -10,18 +10,20 @@ network:
   nodes_count: 100
 
 #   drop_rate:   0
-#   latency_ms:  0
 
   only_bootstrap_join: true
   bootstrap_count: 5
   bootstrap_conns: 2
 
-
+latency:
+  slow_fraction: 0.2
+  fast_ms: 1
+  slow_ms: 10
 
 workload:
-  steps: 10
+  steps: 10 
   store: true
   lookups_per_store: 20
   churn:
     phase: before_search    # before_lookup | before_search
-    lambda: 20
+    lambda: 10

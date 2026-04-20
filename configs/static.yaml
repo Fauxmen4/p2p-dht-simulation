@@ -7,10 +7,9 @@ kademlia:
   beta:     3
 
 network:
-  nodes_count: 1000
+  nodes_count: 500
 
 #   drop_rate:   0
-#   latency_ms:  0
 
   only_bootstrap_join: true
   bootstrap_count: 5
@@ -21,8 +20,7 @@ workload:
   store: true
   lookups_per_store: 5
 
-latency:
-  slow_fraction: 0.2
-  fast_ms: 5
-  slow_ms: 80
-  jitter_fraction: 0.2
+# latency:
+#   slow_fraction: 0.2
+#   fast_ms: 1
+#   slow_ms: 10

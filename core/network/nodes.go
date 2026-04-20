@@ -15,6 +15,7 @@ func (net *Network) CreateNNodes(nodesCfg []cfg.NodeSpec, kademliaCfg cfg.Kademl
 		curr := node.NewNode(nodesCfg[i].ID, nodesCfg[i].Addr, kademliaCfg, net)
 		net.mu.Lock()
 		net.nodes[curr.Addr()] = curr
+		net.latency[curr.Addr()] = nodesCfg[i].Latency
 		net.mu.Unlock()
 		nodes[i] = curr
 	}

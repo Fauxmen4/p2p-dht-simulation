@@ -74,7 +74,7 @@ func (s *simState) applyChurn() {
 
 	// joining
 	for range k {
-		spec := s.gen.newNode(s.cfg.Network)
+		spec := s.gen.newNode(s.cfg)
 		newNode := s.net.AddAndJoin(spec, s.cfg.Kademlia)
 		s.nodes = append(s.nodes, newNode)
 	}
@@ -95,10 +95,10 @@ func ConfigBased(configName string) {
 	gen := NewGenerator(cfg)
 
 	// determine bootstrap nodes
-	bootstrapNodesSpec := gen.nBootstrapNodes(cfg.Network.Bootstrap_count)
+	bootstrapNodesSpec := gen.nBootstrapNodes(cfg)
 
 	// create network
-	net := network.New(cfg.Kademlia, bootstrapNodesSpec)
+	net := network.New(*cfg, bootstrapNodesSpec)
 	log.Info("create network",
 		zap.Int("Boot nodes", cfg.Network.Bootstrap_count),
 		zap.Int("Connections", cfg.Network.Bootstrap_conns),
@@ -110,7 +110,7 @@ func ConfigBased(configName string) {
 	log.Info("network started")
 
 	// determine nodes
-	nodesSpec := gen.nNewNodes(cfg.Network)
+	nodesSpec := gen.nNewNodes(cfg)
 
 	// nodes join network
 	nodes := net.CreateNNodes(nodesSpec, cfg.Kademlia)
@@ -122,6 +122,8 @@ func ConfigBased(configName string) {
 		// add routing table with init node data
 		net.Join(joinInfo)
 		time.Sleep(10 * time.Millisecond) //! give Run() time to start before Join sends RPCs
+
+		fmt.Println("joined node:", i)
 	}
 	log.Info("nodes joined the network", zap.Int("count", len(nodes)))
 

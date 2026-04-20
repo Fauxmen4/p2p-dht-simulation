@@ -14,6 +14,7 @@ type Config struct {
 	Kademlia Kademlia `yaml:"kademlia"`
 
 	Network P2pNetwork `yaml:"network"`
+	Latency Latency    `yaml:"latency,omitempty"`
 
 	Workload Workload `yaml:"workload,omitempty"`
 }
@@ -32,6 +33,13 @@ type P2pNetwork struct {
 	JoinViaBootstrap bool `yaml:"join_via_bootstrap" env-default:"true"`
 	Bootstrap_count  int  `yaml:"bootstrap_count"`
 	Bootstrap_conns  int  `yaml:"bootstrap_conns"`
+}
+
+type Latency struct {
+	SlowFraction   float64 `yaml:"slow_fraction"`   // fraction of slow nodes
+	FastMs         int     `yaml:"fast_ms"`         // mean delay of fast node in ms
+	SlowMs         int     `yaml:"slow_ms"`         // 		     ... slow node ...
+	JitterFraction float64 `yaml:"jitter_fraction"` //
 }
 
 type Churn struct {

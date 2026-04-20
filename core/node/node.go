@@ -96,7 +96,7 @@ func (n *Node) sendRPC(ctx context.Context, to addr.Addr, m *msg.Message) (*msg.
 
 	n.transport.SendAsync(to, m)
 
-	ctx, cancel := context.WithTimeout(ctx, 100*time.Millisecond)
+	ctx, cancel := context.WithTimeout(ctx, 1000*time.Millisecond)
 	defer cancel()
 
 	select {
