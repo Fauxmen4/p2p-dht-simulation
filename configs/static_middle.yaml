@@ -7,16 +7,16 @@ kademlia:
   beta:     3
 
 network:
-  nodes_count: 500
+  nodes_count: 1000
 
 #   drop_rate:   0
 
   only_bootstrap_join: true
-  bootstrap_count: 5
-  bootstrap_conns: 2
+  bootstrap_count: 9
+  bootstrap_conns: 4
 
 workload:
-  steps: 100
+  steps: 200
   store: true
   lookups_per_store: 5
 

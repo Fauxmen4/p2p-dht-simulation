@@ -112,8 +112,8 @@ func (n *Node) addContact(id pid.PeerID, address addr.Addr) {
 		return
 	}
 
-	// lrs, ok := n.RoutingTable.LeastRecentlySeen(id)
-	lrs, ok := n.RoutingTable.LeastRecentlySeenDiverse(id)
+	lrs, ok := n.RoutingTable.LeastRecentlySeen(id)
+	// lrs, ok := n.RoutingTable.LeastRecentlySeenDiverse(id)
 	if !ok {
 		return
 	}

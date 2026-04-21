@@ -39,7 +39,7 @@ func (s *simState) step() {
 		s.applyChurn()
 	}
 
-	fmt.Println("seacrhing", key) //! LOGGING
+	// fmt.Println("seacrhing", key) //! LOGGING
 
 	// choose nodes
 	searchers := randomN(s.gen.rng, s.nodes, s.cfg.Workload.LookupsPerStore)
@@ -68,7 +68,7 @@ func (s *simState) applyChurn() {
 	}
 	s.nodes = survived
 
-	fmt.Println(k, "nodes left") //! LOGGING
+	// fmt.Println(k, "nodes left") //! LOGGING
 
 	start := time.Now()
 
@@ -123,7 +123,7 @@ func ConfigBased(configName string) {
 		net.Join(joinInfo)
 		time.Sleep(10 * time.Millisecond) //! give Run() time to start before Join sends RPCs
 
-		fmt.Println("joined node:", i)
+		// fmt.Println("joined node:", i)
 	}
 	log.Info("nodes joined the network", zap.Int("count", len(nodes)))
 

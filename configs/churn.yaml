@@ -2,12 +2,12 @@ seed: 42
 
 kademlia:
   bit_size: 160
-  k:        4
+  k:        20
   alpha:    3
   beta:     3
 
 network:
-  nodes_count: 500
+  nodes_count: 200
 
 #   drop_rate:   0
 
@@ -23,7 +23,7 @@ network:
 workload:
   steps: 10
   store: true
-  lookups_per_store: 20
+  lookups_per_store: 5
   churn:
     phase: before_search    # before_lookup | before_search
-    lambda: 50
+    lambda: 20

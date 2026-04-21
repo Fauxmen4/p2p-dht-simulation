@@ -1,5 +1,7 @@
 package metrics
 
+import "time"
+
 // success rate
 type search struct {
 	total   int
@@ -8,9 +10,10 @@ type search struct {
 
 // info about one exact lookup
 type hopInfo struct {
-	key     string
-	hops    int
-	success bool
+	key      string
+	hops     int
+	success  bool
+	duration time.Duration
 }
 
 // Storage represents some metrics about node work
@@ -54,7 +57,7 @@ func (s *Storage) HandledRPCs() int {
 	return s.handledRPCs
 }
 
-func (s *Storage) NewSearch(key string, hops int, success bool) {
+func (s *Storage) NewSearch(key string, hops int, success bool, duration time.Duration) {
 	// add search info
 	s.search.total += 1
 	if success {
@@ -63,9 +66,10 @@ func (s *Storage) NewSearch(key string, hops int, success bool) {
 
 	// add hop info
 	s.hopHistory = append(s.hopHistory, hopInfo{
-		key:     key,
-		hops:    hops,
-		success: success,
+		key:      key,
+		hops:     hops,
+		success:  success,
+		duration: duration,
 	})
 }
 
@@ -73,14 +77,16 @@ func (s *Storage) SearchHistory() []hopInfo {
 	return s.hopHistory
 }
 
-func (s *Storage) SuccessHopCount() []int {
-	result := []int{}
+func (s *Storage) SuccessHopCount() ([]int, []float64) {
+	hopCounts := []int{}
+	durations := []float64{}
 	for _, hopInfo := range s.hopHistory {
 		if hopInfo.success {
-			result = append(result, hopInfo.hops)
+			hopCounts = append(hopCounts, hopInfo.hops)
+			durations = append(durations, hopInfo.duration.Seconds())
 		}
 	}
-	return result
+	return hopCounts, durations
 }
 
 func (s *Storage) CountKeyLookups() int {

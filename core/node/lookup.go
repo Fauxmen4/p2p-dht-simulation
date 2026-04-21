@@ -5,15 +5,37 @@ import (
 	pid "my-kad-dht/core/id"
 	msg "my-kad-dht/core/message"
 	rt "my-kad-dht/core/table"
+	"time"
 )
+
+// FindKey looks up the value for key. Checks local storage first, then
+// performs an iterative keyLookup across the network.
+func (n *Node) ValueLookup(ctx context.Context, key string) (string, bool) {
+	hKey := hashKey(key)
+	if val, ok := n.KVStorage.Get(string(hKey)); ok {
+		n.Metrics.NewSearch(key, 0, true, 0)
+		return val, true
+	}
+	start := time.Now()
+	value, ok, hops := n.keyLookup(ctx, string(hKey))
+	duration := time.Since(start)
+	n.Metrics.NewSearch(key, hops, ok, duration)
+	return value, ok
+}
 
 // NodeLookup performs an iterative Kademlia node lookup for targetID,
 // returning the k closest peers discovered.
 func (n *Node) NodeLookup(ctx context.Context, targetID pid.PeerID, k int) []rt.PeerInfo {
+	contacts := n.nodeLookup(ctx, targetID, k)
+
+	return contacts
+}
+
+func (n *Node) nodeLookup(ctx context.Context, targetID pid.PeerID, k int) []rt.PeerInfo {
 	waitlist := n.RoutingTable.KClosestNodes(targetID, n.kad.Alpha)
 	queried := make(map[pid.PeerID]struct{})
 
-    reduced := make([]rt.PeerInfo, 0, len(waitlist))
+	reduced := make([]rt.PeerInfo, 0, len(waitlist))
 	seen := make(map[pid.PeerID]struct{})
 	for _, peer := range waitlist {
 		reduced = append(reduced, peer)
@@ -187,18 +209,4 @@ func (n *Node) keyLookup(ctx context.Context, key string) (string, bool, int) {
 	}
 
 	return "", false, hops
-}
-
-// FindKey looks up the value for key. Checks local storage first, then
-// performs an iterative keyLookup across the network.
-func (n *Node) ValueLookup(ctx context.Context, key string) (string, bool) {
-	hKey := hashKey(key)
-	if val, ok := n.KVStorage.Get(string(hKey)); ok {
-		n.Metrics.NewSearch(key, 0, true)
-		return val, true
-	}
-
-	value, ok, hops := n.keyLookup(ctx, string(hKey))
-	n.Metrics.NewSearch(key, hops, ok)
-	return value, ok
 }

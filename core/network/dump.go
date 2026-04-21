@@ -59,6 +59,7 @@ func (n *Network) DumpMetrics() {
 	sentRPCs := []int{}
 
 	hopsCount := []int{}
+	durations := []float64{} //? in ms for now
 	success := 0
 	total := 0
 
@@ -66,42 +67,56 @@ func (n *Network) DumpMetrics() {
 		handledRPCs = append(handledRPCs, node.Metrics.HandledRPCs())
 		sentRPCs = append(sentRPCs, node.Metrics.SentRPCs())
 
-		successHopCount := node.Metrics.SuccessHopCount()
+		// merge hop history for all bootstrap nodes
+		successHopCount, successDurations := node.Metrics.SuccessHopCount()
+		hopsCount = append(hopsCount, successHopCount...)
+		durations = append(durations, successDurations...)
+
 		success += len(successHopCount)
 		total += node.Metrics.CountKeyLookups()
-		hopsCount = append(hopsCount, successHopCount...)
+
 	}
 	for _, node := range n.nodes {
 		handledRPCs = append(handledRPCs, node.Metrics.HandledRPCs())
 		sentRPCs = append(sentRPCs, node.Metrics.SentRPCs())
 
-		successHopCount := node.Metrics.SuccessHopCount()
+		// merge hop history for ordinary nodes
+		successHopCount, successDurations := node.Metrics.SuccessHopCount()
+		hopsCount = append(hopsCount, successHopCount...)
+		durations = append(durations, successDurations...)
+
 		success += len(successHopCount)
 		total += node.Metrics.CountKeyLookups()
-		hopsCount = append(hopsCount, successHopCount...)
+
 	}
 
-	var sum float64 = 0
-	for _, hops := range hopsCount {
-		sum += float64(hops)
+	// count
+	var sum, totalDuration float64
+	for i := range hopsCount {
+		sum += float64(hopsCount[i])
+		totalDuration += durations[i]
 	}
-	var avg float64 = sum / float64(len(hopsCount))
-	fmt.Println("Mean hops:", avg, "Total:", len(hopsCount))
+	var avgHops float64 = sum / float64(len(hopsCount))
+	var avgTime float64 = totalDuration * 1000 / float64(len(durations)) // in (s)
+
+	var sumHandledRPCs float64
+	for _, handled := range handledRPCs {
+		sumHandledRPCs += float64(handled)
+	}
+
+	// print
+	fmt.Println("Mean time (s):", avgTime)
+	fmt.Println("Mean hops:", avgHops, "Total:", len(hopsCount))
 	fmt.Println("Median:", median(hopsCount))
 	fmt.Println("Percentile 0.95:", percentile(hopsCount, 0.95))
 	fmt.Println("Percentile 0.99:", percentile(hopsCount, 0.99))
-
-	sum = 0
-	for _, handled := range handledRPCs {
-		sum += float64(handled)
-	}
 	fmt.Println("handled RPCs:",
 		slices.Max(handledRPCs),
-		float64(sum)/float64(len(handledRPCs)),
+		float64(sumHandledRPCs)/float64(len(handledRPCs)),
 	)
-
 	fmt.Println("Success rate:", fmt.Sprintf("%d/%d", success, total))
 
+	// dump to .json
 	data["handled_rpcs"] = handledRPCs
 	data["sent_rpcs"] = sentRPCs
 	data["key_lookups"] = map[string]any{
