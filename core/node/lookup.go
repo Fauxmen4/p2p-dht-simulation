@@ -8,19 +8,12 @@ import (
 	"time"
 )
 
-// FindKey looks up the value for key. Checks local storage first, then
-// performs an iterative keyLookup across the network.
-func (n *Node) ValueLookup(ctx context.Context, key string) (string, bool) {
-	hKey := hashKey(key)
-	if val, ok := n.KVStorage.Get(string(hKey)); ok {
-		n.Metrics.NewSearch(key, 0, true, 0)
-		return val, true
-	}
-	start := time.Now()
-	value, ok, hops := n.keyLookup(ctx, string(hKey))
-	duration := time.Since(start)
-	n.Metrics.NewSearch(key, hops, ok, duration)
-	return value, ok
+type result struct {
+	value    string
+	peers    []rt.PeerInfo
+	deadPeer pid.PeerID
+	found    bool // true when value returned
+	ok       bool // true when RPC succeeded
 }
 
 // NodeLookup performs an iterative Kademlia node lookup for targetID,
@@ -49,11 +42,7 @@ func (n *Node) nodeLookup(ctx context.Context, targetID pid.PeerID, k int) []rt.
 		default:
 		}
 
-		type result struct {
-			peers    []rt.PeerInfo
-			deadPeer pid.PeerID
-			ok       bool
-		}
+		// used fields: peers, deadPeer, ok
 		results := make(chan result, len(waitlist))
 
 		for _, nodeInfo := range waitlist {
@@ -103,6 +92,21 @@ func (n *Node) nodeLookup(ctx context.Context, targetID pid.PeerID, k int) []rt.
 	return capped(reduced, k)
 }
 
+// FindKey looks up the value for key. Checks local storage first, then
+// performs an iterative keyLookup across the network.
+func (n *Node) ValueLookup(ctx context.Context, key string) (string, bool) {
+	hKey := hashKey(key)
+	if val, ok := n.KVStorage.Get(string(hKey)); ok {
+		n.Metrics.NewSearch(key, 0, true, 0)
+		return val, true
+	}
+	start := time.Now()
+	value, ok, hops := n.keyLookup(ctx, string(hKey))
+	duration := time.Since(start)
+	n.Metrics.NewSearch(key, hops, ok, duration)
+	return value, ok
+}
+
 // keyLookup performs iterative FIND_VALUE lookup. Returns the value, success flag,
 // and number of rounds. Uses a per-round context to cancel remaining RPCs as soon
 // as any node returns the value.
@@ -128,13 +132,6 @@ func (n *Node) keyLookup(ctx context.Context, key string) (string, bool, int) {
 
 		hops++
 
-		type result struct {
-			value    string
-			peers    []rt.PeerInfo
-			deadPeer pid.PeerID
-			found    bool // true when value returned
-			ok       bool // true when RPC succeeded
-		}
 		results := make(chan result, len(waitlist))
 
 		// Per-round context: cancelled as soon as a value is found so remaining
@@ -160,11 +157,11 @@ func (n *Node) keyLookup(ctx context.Context, key string) (string, bool, int) {
 			}(nodeInfo)
 		}
 
-		total := len(waitlist)
-		var foundValue string
-		var valueFound bool
-
-		for range total {
+		var (
+			foundValue string
+			valueFound bool
+		)
+		for range len(waitlist) {
 			r := <-results // always drain to avoid goroutine leaks
 			if !r.ok {
 				n.RoutingTable.Remove(r.deadPeer)

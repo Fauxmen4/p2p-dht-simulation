@@ -46,19 +46,15 @@ func (n *Node) Store(ctx context.Context, key, value string) {
 		}(candidate)
 	}
 
-	// cnt := len(candidates) // just statistics
 	for range len(candidates) {
 		r := <-results
 		if !r.ok && r.deadPeer != "" {
 			n.RoutingTable.Remove(r.deadPeer)
-			// cnt-- // just statistics
 		} else {
 			n.RoutingTable.MoveToBack(r.id)
 			n.addContact(r.id, r.addr)
 		}
 	}
-
-	// fmt.Println("sent store to nodes:", cnt)
 }
 
 func (n *Node) Ping(ctx context.Context, pi rt.PeerInfo) bool {
@@ -73,7 +69,6 @@ func (n *Node) Ping(ctx context.Context, pi rt.PeerInfo) bool {
 func (n *Node) Join(ctx context.Context, bootstrapID pid.PeerID, bootstrapAddr addr.Addr) {
 	n.RoutingTable.Add(bootstrapID, bootstrapAddr)
 
-	// TODO: maybe we could also add final result to rt
 	n.NodeLookup(ctx, n.id, n.kad.K)
 }
 

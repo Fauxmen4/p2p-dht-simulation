@@ -76,7 +76,7 @@ func (n *Node) HandleRPC(req *msg.Message) *msg.Message {
 	case msg.FindValueType:
 		body := req.Body.(*msg.FindValueBody)
 		if value, ok := n.findValue(body.TargetID); ok {
-			resp.Body = msg.FindValueResponse{Value: value.(string)}
+			resp.Body = msg.FindValueResponse{Value: value}
 		} else {
 			resp.Body = msg.FindNodeResponse{Nearest: n.findNode(body.TargetID)}
 		}
@@ -96,10 +96,6 @@ func (n *Node) findNode(nodeID string) []rt.PeerInfo {
 	return n.RoutingTable.KClosestNodes(pid.PeerID(nodeID), n.kad.Beta)
 }
 
-func (n *Node) findValue(id string) (any, bool) {
-	if value, ok := n.KVStorage.Get(id); ok {
-		return value, true
-	}
-	nearestContacts := n.RoutingTable.KClosestNodes(pid.PeerID(id), n.kad.Beta)
-	return nearestContacts, false
+func (n *Node) findValue(id string) (string, bool) {
+	return n.KVStorage.Get(id)
 }

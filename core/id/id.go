@@ -3,8 +3,6 @@ package pid
 import (
 	"fmt"
 	"math/bits"
-
-	"github.com/google/uuid"
 )
 
 type ID []byte
@@ -24,7 +22,7 @@ func XOR(a, b []byte) []byte {
 	return out
 }
 
-func ZeroPrefixLen(id []byte) int {
+func zeroPrefixLen(id []byte) int {
 	for i, b := range id {
 		if b != 0 {
 			return i*8 + bits.LeadingZeros8(uint8(b))
@@ -34,7 +32,7 @@ func ZeroPrefixLen(id []byte) int {
 }
 
 func CommonPrefixLen(a, b ID) int {
-	return ZeroPrefixLen(XOR(a, b))
+	return zeroPrefixLen(XOR(a, b))
 }
 
 func Less(id1, id2 ID) bool {
@@ -51,10 +49,6 @@ func Less(id1, id2 ID) bool {
 }
 
 type PeerID string
-
-func Generate() PeerID {
-	return PeerID(uuid.NewString())
-}
 
 func ConvertPeerID(id PeerID) ID {
 	return ID([]byte(id))

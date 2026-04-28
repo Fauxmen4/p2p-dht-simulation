@@ -44,17 +44,17 @@ type Latency struct {
 	JitterFraction float64 `yaml:"jitter_fraction"` //
 }
 
-type Churn struct {
-	Phase  string  `yaml:"phase"`  // step moment when nodes leave/join: before_lookup | before_search
-	Lambda float64 `yaml:"lambda"` // how many nodes leave/join during step
-}
-
 type Workload struct {
 	Churn Churn `yaml:"churn,omitempty"`
 
 	Steps           int  `yaml:"steps"`
 	Store           bool `yaml:"store"`
 	LookupsPerStore int  `yaml:"lookups_per_store"`
+}
+
+type Churn struct {
+	Phase  string  `yaml:"phase"`  // before_lookup | before_search
+	Lambda float64 `yaml:"lambda"` // how many nodes leave/join during step
 }
 
 const (
