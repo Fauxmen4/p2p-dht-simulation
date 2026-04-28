@@ -5,6 +5,7 @@ import (
 	"my-kad-dht/core/addr"
 	pid "my-kad-dht/core/id"
 	"sync"
+	"time"
 )
 
 type RoutingTable struct {
@@ -146,7 +147,7 @@ func (rt *RoutingTable) Print() {
 		fmt.Printf("Bucket: %d. Length = %d\n", i, b.Len())
 		for e := b.list.Front(); e != nil; e = e.Next() {
 			peerInfo := e.Value.(PeerInfo)
-			fmt.Printf("- %s (%s)\n", peerInfo.Id, peerInfo.Addr)
+			fmt.Printf("- %s (%s, %v)\n", peerInfo.Id, peerInfo.Addr, peerInfo.RTT)
 		}
 	}
 }
@@ -206,4 +207,18 @@ func (rt *RoutingTable) ReplaceIfDead(lrsID pid.PeerID, newP pid.PeerID, newAddr
 	}
 	b.list.Remove(front)
 	return rt.addLocked(newP, newAddr)
+}
+
+func (rt *RoutingTable) UpdateRTT(id pid.PeerID, rtt time.Duration) {
+	rt.mu.Lock()
+	defer rt.mu.Unlock()
+	b := rt.buckets[rt.bucketIndex(id)]
+	for e := b.list.Front(); e != nil ; e = e.Next() {
+		pi := e.Value.(PeerInfo)
+		if pi.Id == id {
+			pi.RTT = rtt
+			e.Value = pi
+			return
+		}
+	}
 }

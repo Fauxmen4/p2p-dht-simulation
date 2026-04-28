@@ -52,20 +52,24 @@ func (n *Node) nodeLookup(ctx context.Context, targetID pid.PeerID, k int) []rt.
 		type result struct {
 			peers    []rt.PeerInfo
 			deadPeer pid.PeerID
-			ok       bool
+
+			rtt         time.Duration
+			responserId pid.PeerID
+
+			ok bool
 		}
 		results := make(chan result, len(waitlist))
 
 		for _, nodeInfo := range waitlist {
 			queried[nodeInfo.Id] = struct{}{}
 			go func(ni rt.PeerInfo) {
-				resp, err := n.sendRPC(ctx, ni.Addr, n.newFindNodeMsg(ni.Addr, targetID))
+				resp, rtt, err := n.sendRPC(ctx, ni.Addr, n.newFindNodeMsg(ni.Addr, targetID))
 				if err != nil {
 					results <- result{deadPeer: ni.Id, ok: false}
 					return
 				}
 				body := resp.Body.(msg.FindNodeResponse)
-				results <- result{peers: body.Nearest, ok: true}
+				results <- result{peers: body.Nearest, rtt: rtt, responserId: ni.Id, ok: true}
 			}(nodeInfo)
 		}
 
@@ -74,6 +78,9 @@ func (n *Node) nodeLookup(ctx context.Context, targetID pid.PeerID, k int) []rt.
 			if !r.ok {
 				n.RoutingTable.Remove(r.deadPeer)
 				continue
+			}
+			if n.kad.RTTAwareness {
+				n.RoutingTable.UpdateRTT(r.responserId, r.rtt)
 			}
 			for _, peer := range r.peers {
 				// TODO: should I add all returned peers every FIND_smth RPC?
@@ -88,7 +95,11 @@ func (n *Node) nodeLookup(ctx context.Context, targetID pid.PeerID, k int) []rt.
 			}
 		}
 
-		reduced = rt.SortClosestPeers(reduced, pid.ConvertPeerID(targetID))
+		if n.kad.RTTAwareness {
+			reduced = rt.SortByScore(reduced, pid.ConvertPeerID(targetID))
+		} else {
+			reduced = rt.SortClosestPeers(reduced, pid.ConvertPeerID(targetID))
+		}
 		waitlist = waitlist[:0]
 		for _, peer := range reduced {
 			if _, ok := queried[peer.Id]; !ok {
@@ -132,8 +143,12 @@ func (n *Node) keyLookup(ctx context.Context, key string) (string, bool, int) {
 			value    string
 			peers    []rt.PeerInfo
 			deadPeer pid.PeerID
-			found    bool // true when value returned
-			ok       bool // true when RPC succeeded
+
+			rtt         time.Duration
+			responserId pid.PeerID
+
+			found bool // true when value returned
+			ok    bool // true when RPC succeeded
 		}
 		results := make(chan result, len(waitlist))
 
@@ -144,16 +159,16 @@ func (n *Node) keyLookup(ctx context.Context, key string) (string, bool, int) {
 		for _, nodeInfo := range waitlist {
 			queried[nodeInfo.Id] = struct{}{}
 			go func(ni rt.PeerInfo) {
-				resp, err := n.sendRPC(roundCtx, ni.Addr, n.newFindValueMsg(ni.Addr, pid.PeerID(key)))
+				resp, rtt, err := n.sendRPC(roundCtx, ni.Addr, n.newFindValueMsg(ni.Addr, pid.PeerID(key)))
 				if err != nil {
 					results <- result{deadPeer: ni.Id, ok: false}
 					return
 				}
 				switch body := resp.Body.(type) {
 				case msg.FindValueResponse:
-					results <- result{value: body.Value, found: true, ok: true}
+					results <- result{value: body.Value, found: true, ok: true, rtt: rtt, responserId: ni.Id}
 				case msg.FindNodeResponse:
-					results <- result{peers: body.Nearest, ok: true}
+					results <- result{peers: body.Nearest, ok: true, rtt: rtt, responserId: ni.Id}
 				default:
 					results <- result{ok: false}
 				}
@@ -169,6 +184,9 @@ func (n *Node) keyLookup(ctx context.Context, key string) (string, bool, int) {
 			if !r.ok {
 				n.RoutingTable.Remove(r.deadPeer)
 				continue
+			}
+			if n.kad.RTTAwareness {
+				n.RoutingTable.UpdateRTT(r.responserId, r.rtt)
 			}
 			if r.found && !valueFound {
 				foundValue = r.value
@@ -196,7 +214,11 @@ func (n *Node) keyLookup(ctx context.Context, key string) (string, bool, int) {
 			return foundValue, true, hops
 		}
 
-		reduced = rt.SortClosestPeers(reduced, pid.ConvertPeerID(targetID))
+		if n.kad.RTTAwareness {
+			reduced = rt.SortByScore(reduced, pid.ConvertPeerID(targetID))
+		} else {
+			reduced = rt.SortClosestPeers(reduced, pid.ConvertPeerID(targetID))
+		}
 		waitlist = waitlist[:0]
 		for _, peer := range reduced {
 			if _, ok := queried[peer.Id]; !ok {

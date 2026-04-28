@@ -59,3 +59,11 @@ func Generate() PeerID {
 func ConvertPeerID(id PeerID) ID {
 	return ID([]byte(id))
 }
+
+func ToFloat64(id ID) float64 {
+	var v uint64
+	for i := range 8 {
+		v = (v << 8) | uint64(id[i])
+	}
+	return float64(v)
+}

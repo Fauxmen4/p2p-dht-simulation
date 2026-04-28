@@ -4,12 +4,14 @@ import (
 	"container/list"
 	"my-kad-dht/core/addr"
 	pid "my-kad-dht/core/id"
+	"time"
 )
 
 type PeerInfo struct {
 	Id    pid.PeerID
 	dhtID pid.ID
 	Addr  addr.Addr
+	RTT time.Duration
 
 	// TODO: add last usage time, etc.
 }

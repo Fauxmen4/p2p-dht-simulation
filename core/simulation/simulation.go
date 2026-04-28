@@ -80,10 +80,9 @@ func (s *simState) applyChurn() {
 	}
 
 	fmt.Println(k, "nodes joined", "after", time.Since(start).Seconds()) //! LOGGING
-
 }
 
-func ConfigBased(configName string) {
+func ConfigBasedSimulation(configName string) {
 	// init logger
 	log := zap.Must(zap.NewDevelopment())
 
@@ -146,4 +145,6 @@ func ConfigBased(configName string) {
 	net.DumpTopology()
 	net.DumpMetrics()
 	log.Info("topology & metrics were dumped")
+
+	nodes[0].RoutingTable.Print()
 }

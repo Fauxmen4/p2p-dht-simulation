@@ -79,7 +79,13 @@ func (n *Node) InputCh() chan *msg.Message {
 	return n.inputCh
 }
 
-func (n *Node) sendRPC(ctx context.Context, to addr.Addr, m *msg.Message) (*msg.Message, error) {
+// sendRPC sends message to specified address with timeout in 1000 millieseconds.
+// Before sending channel for response is created.
+func (n *Node) sendRPC(ctx context.Context, to addr.Addr, m *msg.Message) (
+	*msg.Message, 
+	time.Duration, 
+	error,
+) {
 	n.Metrics.NewRPC(outgoing)
 
 	respCh := make(chan *msg.Message, 1) // buffered — dispatcher never blocks
@@ -93,7 +99,7 @@ func (n *Node) sendRPC(ctx context.Context, to addr.Addr, m *msg.Message) (*msg.
 		delete(n.pending, m.ID)
 		n.pendingMu.Unlock()
 	}()
-
+	start := time.Now() //! Maybe move a little higher in this function?
 	n.transport.SendAsync(to, m)
 
 	ctx, cancel := context.WithTimeout(ctx, 1000*time.Millisecond)
@@ -101,9 +107,9 @@ func (n *Node) sendRPC(ctx context.Context, to addr.Addr, m *msg.Message) (*msg.
 
 	select {
 	case resp := <-respCh:
-		return resp, nil
+		return resp, time.Since(start), nil
 	case <-ctx.Done():
-		return nil, ctx.Err() // late responses will hit `default` in dispatcher
+		return nil, 0, ctx.Err() // late responses will hit `default` in dispatcher
 	}
 }
 

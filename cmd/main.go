@@ -7,5 +7,5 @@ import (
 
 func main() {
 	configName := os.Args[1]
-	simulation.ConfigBased(configName)
+	simulation.ConfigBasedSimulation(configName)
 }

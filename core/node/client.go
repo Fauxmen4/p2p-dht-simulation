@@ -2,6 +2,7 @@ package node
 
 import (
 	"context"
+	"time"
 
 	"my-kad-dht/core/addr"
 	pid "my-kad-dht/core/id"
@@ -31,18 +32,19 @@ func (n *Node) Store(ctx context.Context, key, value string) {
 		addr     addr.Addr
 		deadPeer pid.PeerID
 		ok       bool
+		rtt      time.Duration
 	}
 	results := make(chan result, len(candidates))
 
 	for _, candidate := range candidates {
 		go func(pi rt.PeerInfo) {
 			m := n.newStoreMsg(candidate.Addr, string(targetID), value)
-			resp, err := n.sendRPC(ctx, pi.Addr, m)
+			resp, rtt, err := n.sendRPC(ctx, pi.Addr, m)
 			if err != nil {
 				results <- result{deadPeer: pi.Id, ok: false}
 				return
 			}
-			results <- result{id: candidate.Id, addr: candidate.Addr, ok: resp.Success}
+			results <- result{id: candidate.Id, addr: candidate.Addr, ok: resp.Success, rtt: rtt}
 		}(candidate)
 	}
 
@@ -53,6 +55,9 @@ func (n *Node) Store(ctx context.Context, key, value string) {
 			n.RoutingTable.Remove(r.deadPeer)
 			// cnt-- // just statistics
 		} else {
+			if n.kad.RTTAwareness {
+				n.RoutingTable.UpdateRTT(r.id, r.rtt)
+			}
 			n.RoutingTable.MoveToBack(r.id)
 			n.addContact(r.id, r.addr)
 		}
@@ -62,9 +67,12 @@ func (n *Node) Store(ctx context.Context, key, value string) {
 }
 
 func (n *Node) Ping(ctx context.Context, pi rt.PeerInfo) bool {
-	resp, err := n.sendRPC(ctx, pi.Addr, n.newPingMsg(pi.Addr))
+	resp, rtt, err := n.sendRPC(ctx, pi.Addr, n.newPingMsg(pi.Addr))
 	if err != nil {
 		return false
+	}
+	if n.kad.RTTAwareness && resp.Success {
+		n.RoutingTable.UpdateRTT(pi.Id, rtt)
 	}
 	return resp.Success
 }
