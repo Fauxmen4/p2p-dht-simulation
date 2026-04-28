@@ -24,6 +24,8 @@ type Kademlia struct {
 	K       int `yaml:"k"`
 	Alpha   int `yaml:"alpha"`
 	Beta    int `yaml:"beta"`
+
+	PeerDiversity bool `yaml:"peer_diversity"`
 }
 
 type P2pNetwork struct {

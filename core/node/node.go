@@ -55,7 +55,7 @@ func NewNode(id pid.PeerID, addr addr.Addr, cfg cfg.Kademlia, t Transport) *Node
 	node := &Node{
 		id:           id,
 		addr:         addr,
-		RoutingTable: rt.NewRoutingTable(cfg.K, cfg.BitSize, id),
+		RoutingTable: rt.NewRoutingTable(id, cfg),
 		kad:          cfg,
 		transport:    t,
 		inputCh:      make(chan *msg.Message),
@@ -113,7 +113,6 @@ func (n *Node) addContact(id pid.PeerID, address addr.Addr) {
 	}
 
 	lrs, ok := n.RoutingTable.LeastRecentlySeen(id)
-	// lrs, ok := n.RoutingTable.LeastRecentlySeenDiverse(id)
 	if !ok {
 		return
 	}

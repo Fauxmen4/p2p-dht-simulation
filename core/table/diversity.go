@@ -52,30 +52,3 @@ func (rt *RoutingTable) lrsAmongDuplicates(b *Bucket, bucketLevel int) (PeerInfo
 	}
 	return PeerInfo{}, false
 }
-
-// LeastRecentlySeenDiverse returns the eviction candidate according to the
-// diversity-aware policy from Salah et al. 2014:
-// - If any slot is duplicated → evict LRS among those duplicates
-// - Otherwise (all slots unique) → fallback to global LRS
-func (rt *RoutingTable) LeastRecentlySeenDiverse(p pid.PeerID) (PeerInfo, bool) {
-	rt.mu.RLock()
-	defer rt.mu.RUnlock()
-
-	bucketLevel := rt.bucketIndex(p)
-	b := rt.buckets[bucketLevel]
-	if b.Len() < rt.bucketSize {
-		return PeerInfo{}, false
-	}
-
-	// prefer evicting a duplicate-slot contact
-	if lrs, ok := rt.lrsAmongDuplicates(b, bucketLevel); ok {
-		return lrs, true
-	}
-
-	// fallback: global LRS (standard Kademlia)
-	front := b.list.Front()
-	if front == nil {
-		return PeerInfo{}, false
-	}
-	return front.Value.(PeerInfo), true
-}

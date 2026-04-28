@@ -3,6 +3,7 @@ package routingtable
 import (
 	"fmt"
 	"my-kad-dht/core/addr"
+	"my-kad-dht/core/config"
 	pid "my-kad-dht/core/id"
 	"sync"
 )
@@ -17,10 +18,12 @@ type RoutingTable struct {
 	bitSize    int // number of bits in ID, also means number of buckets
 	buckets    []*Bucket
 	bucketSize int
+
+	peerDiversity bool // consider q bits of ID after common prefix
 }
 
-func NewRoutingTable(bucketSize int, bitSize int, selfID pid.PeerID) *RoutingTable {
-	buckets := make([]*Bucket, bitSize)
+func NewRoutingTable(selfID pid.PeerID, cfg config.Kademlia) *RoutingTable {
+	buckets := make([]*Bucket, cfg.BitSize)
 	for i := range buckets {
 		buckets[i] = NewBucket()
 	}
@@ -29,9 +32,10 @@ func NewRoutingTable(bucketSize int, bitSize int, selfID pid.PeerID) *RoutingTab
 		selfID:    selfID,
 		selfDhtId: pid.ConvertPeerID(selfID),
 
-		bitSize:    bitSize,
-		buckets:    buckets,
-		bucketSize: bucketSize,
+		bitSize:       cfg.BitSize,
+		buckets:       buckets,
+		bucketSize:    cfg.K,
+		peerDiversity: cfg.PeerDiversity,
 	}
 
 	return rt
@@ -41,10 +45,20 @@ func NewRoutingTable(bucketSize int, bitSize int, selfID pid.PeerID) *RoutingTab
 func (rt *RoutingTable) LeastRecentlySeen(p pid.PeerID) (PeerInfo, bool) {
 	rt.mu.RLock()
 	defer rt.mu.RUnlock()
-	b := rt.buckets[rt.bucketIndex(p)]
+
+	bucketLevel := rt.bucketIndex(p)
+	b := rt.buckets[bucketLevel]
 	if b.Len() < rt.bucketSize {
 		return PeerInfo{}, false
 	}
+
+	// if peer diversity policy is enabled, prefer evicting a duplicate-slot contact
+	if rt.peerDiversity {
+		if lrs, ok := rt.lrsAmongDuplicates(b, bucketLevel); ok {
+			return lrs, true
+		}
+	}
+
 	front := b.list.Front()
 	if front == nil {
 		return PeerInfo{}, false
