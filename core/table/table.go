@@ -41,7 +41,7 @@ func NewRoutingTable(selfID pid.PeerID, cfg config.Kademlia) *RoutingTable {
 	return rt
 }
 
-// LeastRecentlySeen returns earliest seen peer or (nil, false)
+// LeastRecentlySeen returns earliest seen peer (first in bucket) or (nil, false).
 func (rt *RoutingTable) LeastRecentlySeen(p pid.PeerID) (PeerInfo, bool) {
 	rt.mu.RLock()
 	defer rt.mu.RUnlock()
@@ -52,12 +52,12 @@ func (rt *RoutingTable) LeastRecentlySeen(p pid.PeerID) (PeerInfo, bool) {
 		return PeerInfo{}, false
 	}
 
-	// if peer diversity policy is enabled, prefer evicting a duplicate-slot contact
-	if rt.peerDiversity {
-		if lrs, ok := rt.lrsAmongDuplicates(b, bucketLevel); ok {
-			return lrs, true
-		}
-	}
+	// // if peer diversity policy is enabled, prefer evicting a duplicate-slot contact
+	// if rt.peerDiversity {
+	// 	if lrs, ok := rt.lrsAmongDuplicates(b, bucketLevel); ok {
+	// 		return lrs, true
+	// 	}
+	// }
 
 	front := b.list.Front()
 	if front == nil {
@@ -177,20 +177,6 @@ func (rt *RoutingTable) bucketIndex(p pid.PeerID) int {
 	return bucketID
 }
 
-// ReturnAllIds returns a list of ids from every node's kbucket
-func (rt *RoutingTable) ReturnAllIds() []pid.PeerID {
-	rt.mu.RLock()
-	defer rt.mu.RUnlock()
-	ids := make([]pid.PeerID, 0)
-	for _, b := range rt.buckets {
-		for e := b.list.Front(); e != nil; e = e.Next() {
-			ids = append(ids, e.Value.(PeerInfo).Id)
-		}
-	}
-
-	return ids
-}
-
 func (rt *RoutingTable) Remove(id pid.PeerID) {
 	rt.mu.Lock()
 	defer rt.mu.Unlock()
@@ -198,6 +184,7 @@ func (rt *RoutingTable) Remove(id pid.PeerID) {
 	rt.buckets[idx].Remove(id)
 }
 
+//! not used
 func (rt *RoutingTable) BucketIndex(p pid.PeerID) int {
 	rt.mu.RLock()
 	defer rt.mu.RUnlock()
@@ -220,4 +207,19 @@ func (rt *RoutingTable) ReplaceIfDead(lrsID pid.PeerID, newP pid.PeerID, newAddr
 	}
 	b.list.Remove(front)
 	return rt.addLocked(newP, newAddr)
+}
+
+// ReturnAllIds returns a list of ids from every node's kbucket
+//! Used in dump module.
+func (rt *RoutingTable) ReturnAllIds() []pid.PeerID {
+	rt.mu.RLock()
+	defer rt.mu.RUnlock()
+	ids := make([]pid.PeerID, 0)
+	for _, b := range rt.buckets {
+		for e := b.list.Front(); e != nil; e = e.Next() {
+			ids = append(ids, e.Value.(PeerInfo).Id)
+		}
+	}
+
+	return ids
 }

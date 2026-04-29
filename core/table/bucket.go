@@ -4,12 +4,14 @@ import (
 	"container/list"
 	"my-kad-dht/core/addr"
 	pid "my-kad-dht/core/id"
+	"time"
 )
 
 type PeerInfo struct {
 	Id    pid.PeerID
 	dhtID pid.ID
 	Addr  addr.Addr
+	RTT   time.Duration
 
 	// TODO: add last usage time, etc.
 }
@@ -55,6 +57,7 @@ func (b *Bucket) Remove(id pid.PeerID) bool {
 	return false
 }
 
+//! not used
 func (b *Bucket) Peers() []PeerInfo {
 	peers := make([]PeerInfo, 0, b.Len())
 	for e := b.list.Front(); e != nil; e = e.Next() {
@@ -64,6 +67,7 @@ func (b *Bucket) Peers() []PeerInfo {
 	return peers
 }
 
+//! not used
 func (b *Bucket) PeerIDs() []pid.PeerID {
 	peerIDs := make([]pid.PeerID, 0, b.Len())
 	for e := b.list.Front(); e != nil; e = e.Next() {

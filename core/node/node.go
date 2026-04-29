@@ -119,7 +119,7 @@ func (n *Node) addContact(id pid.PeerID, address addr.Addr) {
 
 	//! is it correct to do it async way?
 	// ping earliest seen and replace it in case its dead
-	go func() {
+	go func(id pid.PeerID, address addr.Addr) {
 		ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
 		defer cancel()
 		if n.Ping(ctx, lrs) {
@@ -127,5 +127,5 @@ func (n *Node) addContact(id pid.PeerID, address addr.Addr) {
 		} else {
 			n.RoutingTable.ReplaceIfDead(lrs.Id, id, address)
 		}
-	}()
+	}(id, address)
 }
