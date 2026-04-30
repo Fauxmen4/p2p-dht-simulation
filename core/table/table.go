@@ -59,23 +59,14 @@ func (rt *RoutingTable) LeastRecentlySeen(p pid.PeerID) (PeerInfo, bool) {
 	// 	}
 	// }
 
-	front := b.list.Front()
-	if front == nil {
-		return PeerInfo{}, false
-	}
-	return front.Value.(PeerInfo), true
+	return b.Front()
 }
 
 func (rt *RoutingTable) MoveToBack(p pid.PeerID) {
 	rt.mu.Lock()
 	defer rt.mu.Unlock()
 	b := rt.buckets[rt.bucketIndex(p)]
-	for e := b.list.Front(); e != nil; e = e.Next() {
-		if e.Value.(PeerInfo).Id == p {
-			b.list.MoveToBack(e)
-			return
-		}
-	}
+	b.MoveToBack(p)
 }
 
 // Add adds new node contact to corresponding rounting table.
@@ -121,19 +112,19 @@ func (rt *RoutingTable) KClosestNodes(target pid.PeerID, k int) []PeerInfo {
 		target: targetID,
 	}
 
-	pds.appendPeersFromList(rt.buckets[cpl].list)
+	pds.appendPeersFromBucket(rt.buckets[cpl])
 
 	// If not enougn, add peers from all buckets to the right.
 	// All buckets to the right share exactly cpl bits
 	if pds.Len() < k {
 		for i := cpl + 1; i < len(rt.buckets); i++ {
-			pds.appendPeersFromList(rt.buckets[i].list)
+			pds.appendPeersFromBucket(rt.buckets[i])
 		}
 	}
 
 	// If still not enough, add buckets from the left with fewer common bits
 	for i := cpl - 1; i >= 0 && pds.Len() < k; i-- {
-		pds.appendPeersFromList(rt.buckets[i].list)
+		pds.appendPeersFromBucket(rt.buckets[i])
 	}
 
 	pds.sort()
@@ -158,10 +149,9 @@ func (rt *RoutingTable) Print() {
 			continue
 		}
 		fmt.Printf("Bucket: %d. Length = %d\n", i, b.Len())
-		for e := b.list.Front(); e != nil; e = e.Next() {
-			peerInfo := e.Value.(PeerInfo)
-			fmt.Printf("- %s (%s)\n", peerInfo.Id, peerInfo.Addr)
-		}
+		b.ForEach(func(p PeerInfo) {
+			fmt.Printf("- %s (%s)\n", p.Id, p.Addr)
+		})
 	}
 }
 
@@ -198,14 +188,14 @@ func (rt *RoutingTable) ReplaceIfDead(lrsID pid.PeerID, newP pid.PeerID, newAddr
 	defer rt.mu.Unlock()
 	idx := rt.bucketIndex(newP)
 	b := rt.buckets[idx]
-	front := b.list.Front()
-	if front == nil {
+	pi, ok := b.Front()
+	if !ok {
 		return false
 	}
-	if front.Value.(PeerInfo).Id != lrsID {
+	if pi.Id != lrsID {
 		return false // кто-то уже заменил до нас
 	}
-	b.list.Remove(front)
+	b.RemoveFront()
 	return rt.addLocked(newP, newAddr)
 }
 
@@ -216,9 +206,9 @@ func (rt *RoutingTable) ReturnAllIds() []pid.PeerID {
 	defer rt.mu.RUnlock()
 	ids := make([]pid.PeerID, 0)
 	for _, b := range rt.buckets {
-		for e := b.list.Front(); e != nil; e = e.Next() {
-			ids = append(ids, e.Value.(PeerInfo).Id)
-		}
+		b.ForEach(func(p PeerInfo) {
+			ids = append(ids, p.Id)
+		})
 	}
 
 	return ids
