@@ -56,23 +56,3 @@ func (b *Bucket) Remove(id pid.PeerID) bool {
 	}
 	return false
 }
-
-//! not used
-func (b *Bucket) Peers() []PeerInfo {
-	peers := make([]PeerInfo, 0, b.Len())
-	for e := b.list.Front(); e != nil; e = e.Next() {
-		p := e.Value.(PeerInfo)
-		peers = append(peers, p)
-	}
-	return peers
-}
-
-//! not used
-func (b *Bucket) PeerIDs() []pid.PeerID {
-	peerIDs := make([]pid.PeerID, 0, b.Len())
-	for e := b.list.Front(); e != nil; e = e.Next() {
-		p := e.Value.(PeerInfo)
-		peerIDs = append(peerIDs, p.Id)
-	}
-	return peerIDs
-}
