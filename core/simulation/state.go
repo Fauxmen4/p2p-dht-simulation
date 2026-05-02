@@ -72,7 +72,7 @@ func (s *simState) applyChurn() {
 
 	// joining
 	for range k {
-		spec := s.gen.newNode(s.cfg)
+		spec := s.gen.newNode()
 		newNode := s.net.AddAndJoin(spec, s.cfg.Kademlia)
 		s.nodes = append(s.nodes, newNode)
 	}

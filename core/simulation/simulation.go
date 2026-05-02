@@ -2,6 +2,7 @@ package simulation
 
 import (
 	"context"
+	"fmt"
 	"my-kad-dht/core/config"
 	"my-kad-dht/core/network"
 	"time"
@@ -21,7 +22,7 @@ func ConfigBased(configName string) {
 	gen := NewGenerator(cfg)
 
 	// determine bootstrap nodes
-	bootstrapNodesSpec := gen.nBootstrapNodes(cfg)
+	bootstrapNodesSpec := gen.nBootstrapNodes()
 
 	// create network
 	net := network.New(*cfg, bootstrapNodesSpec)
@@ -36,7 +37,7 @@ func ConfigBased(configName string) {
 	log.Info("network started")
 
 	// determine nodes
-	nodesSpec := gen.nNewNodes(cfg)
+	nodesSpec := gen.nNewNodes()
 
 	// nodes join network
 	nodes := net.CreateNNodes(nodesSpec, cfg.Kademlia)
@@ -49,7 +50,7 @@ func ConfigBased(configName string) {
 		net.Join(joinInfo)
 		time.Sleep(10 * time.Millisecond) //! give Run() time to start before Join sends RPCs
 
-		// fmt.Println("joined node:", i)
+		fmt.Println("joined node:", i)
 	}
 	log.Info("nodes joined the network", zap.Int("count", len(nodes)))
 
@@ -64,8 +65,10 @@ func ConfigBased(configName string) {
 		kvData: [][2]string{},
 	}
 
-	for range cfg.Workload.Steps {
+	for i := range cfg.Workload.Steps {
 		state.step()
+		// fmt.Println("Step:", i)
+		_ = i
 	}
 
 	// save results

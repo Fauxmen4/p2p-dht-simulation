@@ -7,8 +7,9 @@ import (
 	pid "my-kad-dht/core/id"
 	msg "my-kad-dht/core/message"
 	"my-kad-dht/core/metrics"
-	strg "my-kad-dht/core/storage"
 	rt "my-kad-dht/core/table"
+	"my-kad-dht/pkg/rtt"
+	strg "my-kad-dht/pkg/storage"
 	"sync"
 	"time"
 )
@@ -44,6 +45,8 @@ type Node struct {
 	// For pending messages used during operation
 	pendingMu sync.Mutex
 	pending   map[msg.MsgID]chan *msg.Message
+
+	Coord rtt.Coord // node coordinates in 2D + height model for delay imitating
 
 	KVStorage storage
 	Metrics   *metrics.Storage
@@ -96,7 +99,7 @@ func (n *Node) sendRPC(ctx context.Context, to addr.Addr, m *msg.Message) (*msg.
 
 	n.transport.SendAsync(to, m)
 
-	ctx, cancel := context.WithTimeout(ctx, 100*time.Millisecond)
+	ctx, cancel := context.WithTimeout(ctx, 500*time.Millisecond)
 	defer cancel()
 
 	select {
