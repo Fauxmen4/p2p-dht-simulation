@@ -49,7 +49,7 @@ func (n *Network) StartNetwork() {
 }
 
 // Fire-and-Forget
-func (net *Network) SendAsync(to addr.Addr, m *msg.Message) {
+func (net *Network) SendAsync(m *msg.Message) {
 	net.mu.RLock()
 	receiver, ok1 := net.nodes[m.To]
 	sender, ok2 := net.nodes[m.From]

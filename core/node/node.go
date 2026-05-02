@@ -28,7 +28,7 @@ type storage interface {
 
 type Transport interface {
 	// SendAsync delivers a message in a fire-and-forget manner.
-	SendAsync(to addr.Addr, m *msg.Message)
+	SendAsync(m *msg.Message)
 }
 
 type Node struct {
@@ -97,7 +97,7 @@ func (n *Node) sendRPC(ctx context.Context, to addr.Addr, m *msg.Message) (*msg.
 		n.pendingMu.Unlock()
 	}()
 
-	n.transport.SendAsync(to, m)
+	n.transport.SendAsync(m)
 
 	ctx, cancel := context.WithTimeout(ctx, 500*time.Millisecond)
 	defer cancel()

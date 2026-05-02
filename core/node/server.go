@@ -37,7 +37,7 @@ func (n *Node) Run(ctx context.Context) {
 				n.addContact(m.FromID, m.From)
 				
 				resp := n.HandleRPC(m)
-				n.transport.SendAsync(resp.To, resp)
+				n.transport.SendAsync(resp)
 			}
 		}
 	}
