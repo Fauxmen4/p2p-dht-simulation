@@ -2,7 +2,6 @@ package simulation
 
 import (
 	"context"
-	"fmt"
 	"my-kad-dht/core/config"
 	"my-kad-dht/core/network"
 	"time"
