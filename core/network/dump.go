@@ -97,7 +97,7 @@ func (n *Network) DumpMetrics() {
 		totalDuration += durations[i]
 	}
 	var avgHops float64 = sum / float64(len(hopsCount))
-	var avgTime float64 = totalDuration * 1000 / float64(len(durations)) // in (s)
+	var avgTime float64 = totalDuration * 1000 / float64(len(durations)) // in ms
 
 	var sumHandledRPCs float64
 	for _, handled := range handledRPCs {
@@ -105,7 +105,7 @@ func (n *Network) DumpMetrics() {
 	}
 
 	// print
-	fmt.Println("Mean time (s):", avgTime)
+	fmt.Println("Mean time (ms):", avgTime)
 	fmt.Println("Mean hops:", avgHops, "Total:", len(hopsCount))
 	fmt.Println("Median:", median(hopsCount))
 	fmt.Println("Percentile 0.95:", percentile(hopsCount, 0.95))

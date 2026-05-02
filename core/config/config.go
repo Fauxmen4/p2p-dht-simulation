@@ -31,6 +31,8 @@ type Kademlia struct {
 type P2pNetwork struct {
 	NodesCount int `yaml:"nodes_count"`
 
+	DropRate float64 `yaml:"drop_rate" env-default:"0"` // probability [0, 1) of dropping any single message
+
 	// Bootstrap
 	JoinViaBootstrap bool `yaml:"join_via_bootstrap" env-default:"true"`
 	Bootstrap_count  int  `yaml:"bootstrap_count"`

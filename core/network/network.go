@@ -14,9 +14,11 @@ import (
 type Network struct {
 	config cfg.Kademlia // configuration of everything
 
-	mu      sync.RWMutex
-	nodes   map[addr.Addr]*node.Node // map with all nodes (even bootstrap), used to address messages from one node to another
-	latency map[addr.Addr]time.Duration
+	mu       sync.RWMutex
+	nodes    map[addr.Addr]*node.Node // map with all nodes (even bootstrap), used to address messages from one node to another
+	latency  map[addr.Addr]time.Duration
+	
+	dropRate float64 // probability [0, 1) of dropping any single message
 
 	bootstrapNodes []*node.Node // nodes for joining the network
 }
@@ -24,10 +26,11 @@ type Network struct {
 // Network constructor
 func New(cfg cfg.Config, bootstrapCfg []cfg.NodeSpec) *Network {
 	net := &Network{
-		config:  cfg.Kademlia,
-		mu:      sync.RWMutex{},
-		nodes:   make(map[addr.Addr]*node.Node),
-		latency: make(map[addr.Addr]time.Duration),
+		config:   cfg.Kademlia,
+		mu:       sync.RWMutex{},
+		nodes:    make(map[addr.Addr]*node.Node),
+		latency:  make(map[addr.Addr]time.Duration),
+		dropRate: cfg.Network.DropRate,
 	}
 
 	// bootstrap nodes
@@ -56,11 +59,12 @@ func (net *Network) SendAsync(to addr.Addr, m *msg.Message) {
 		return
 	}
 	go func() {
+		if net.dropRate > 0 && rand.Float64() < net.dropRate {
+			return
+		}
 		if base > 0 {
 			jitter := time.Duration(float64(base) * rand.Float64())
-			delay := base + jitter
-			delay = max(delay, 0)
-			time.Sleep(delay)
+			time.Sleep(base + jitter)
 		}
 		n.InputCh() <- m
 	}()
