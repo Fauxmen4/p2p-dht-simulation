@@ -2,6 +2,7 @@ package node
 
 import (
 	"context"
+	"time"
 
 	"my-kad-dht/core/addr"
 	pid "my-kad-dht/core/id"
@@ -63,6 +64,26 @@ func (n *Node) Ping(ctx context.Context, pi rt.PeerInfo) bool {
 		return false
 	}
 	return resp.Success
+}
+
+// NodeLookup performs an iterative Kademlia node lookup for targetID,
+// returning the k closest peers discovered.
+func (n *Node) NodeLookup(ctx context.Context, targetID pid.PeerID, k int) []rt.PeerInfo {
+	return n.nodeLookup(ctx, targetID, k)
+}
+
+// ValueLookup looks up the value for key. Checks local storage first, then
+// performs an iterative keyLookup across the network.
+func (n *Node) ValueLookup(ctx context.Context, key string) (string, bool) {
+	hKey := hashKey(key)
+	if val, ok := n.KVStorage.Get(string(hKey)); ok {
+		n.Metrics.NewSearch(key, 0, true, 0)
+		return val, true
+	}
+	start := time.Now()
+	value, ok, hops := n.keyLookup(ctx, string(hKey))
+	n.Metrics.NewSearch(key, hops, ok, time.Since(start))
+	return value, ok
 }
 
 // Join bootstraps the node into the network by performing NodeLookup on its own ID.
