@@ -5,7 +5,6 @@ import (
 	pid "my-kad-dht/core/id"
 	msg "my-kad-dht/core/message"
 	rt "my-kad-dht/core/table"
-	"time"
 )
 
 type result struct {
@@ -16,20 +15,13 @@ type result struct {
 	ok       bool // true when RPC succeeded
 }
 
-// NodeLookup performs an iterative Kademlia node lookup for targetID,
-// returning the k closest peers discovered.
-func (n *Node) NodeLookup(ctx context.Context, targetID pid.PeerID, k int) []rt.PeerInfo {
-	return n.nodeLookup(ctx, targetID, k)
-}
-
 func (n *Node) nodeLookup(ctx context.Context, targetID pid.PeerID, k int) []rt.PeerInfo {
 	reduced, _, _ := n.iterativeLookup(
-		ctx,
-		targetID, 
+		ctx, targetID,
 		func(ctx context.Context, waitlist []rt.PeerInfo) ([]rt.PeerInfo, string, bool) {
 			results := n.sendParallel(
-				ctx, 
-				waitlist, 
+				ctx,
+				waitlist,
 				func(ctx context.Context, ni rt.PeerInfo) result {
 					resp, err := n.sendRPC(ctx, ni.Addr, n.newFindNodeMsg(ni.Addr, targetID))
 					if err != nil {
@@ -59,26 +51,13 @@ func (n *Node) nodeLookup(ctx context.Context, targetID pid.PeerID, k int) []rt.
 	return capped(reduced, k)
 }
 
-// ValueLookup looks up the value for key. Checks local storage first, then
-// performs an iterative keyLookup across the network.
-func (n *Node) ValueLookup(ctx context.Context, key string) (string, bool) {
-	hKey := hashKey(key)
-	if val, ok := n.KVStorage.Get(string(hKey)); ok {
-		n.Metrics.NewSearch(key, 0, true, 0)
-		return val, true
-	}
-	start := time.Now()
-	value, ok, hops := n.keyLookup(ctx, string(hKey))
-	n.Metrics.NewSearch(key, hops, ok, time.Since(start))
-	return value, ok
-}
-
 // keyLookup performs iterative FIND_VALUE lookup. Returns the value, success flag,
 // and number of rounds. Uses a per-round context to cancel remaining RPCs as soon
 // as any node returns the value.
 func (n *Node) keyLookup(ctx context.Context, key string) (string, bool, int) {
 	targetID := pid.PeerID(key)
 	hops := 0
+
 	_, value, found := n.iterativeLookup(ctx, targetID, func(ctx context.Context, waitlist []rt.PeerInfo) ([]rt.PeerInfo, string, bool) {
 		hops++
 		ch := make(chan result, len(waitlist))
@@ -100,9 +79,12 @@ func (n *Node) keyLookup(ctx context.Context, key string) (string, bool, int) {
 				}
 			}(ni)
 		}
+
 		var newPeers []rt.PeerInfo
 		var foundValue string
+		
 		valueFound := false
+
 		for range len(waitlist) {
 			r := <-ch // always drain to avoid goroutine leaks
 			if !r.ok {
@@ -126,6 +108,7 @@ func (n *Node) keyLookup(ctx context.Context, key string) (string, bool, int) {
 		cancelRound()
 		return newPeers, foundValue, valueFound
 	})
+
 	return value, found, hops
 }
 
@@ -141,8 +124,12 @@ func (n *Node) iterativeLookup(
 ) ([]rt.PeerInfo, string, bool) {
 	waitlist := n.RoutingTable.KClosestNodes(targetID, n.kad.Alpha)
 	queried := make(map[pid.PeerID]struct{})
+
+	// deduplicator for reduce
 	seen := make(map[pid.PeerID]struct{})
+	// add in case contact is not in set "seen"
 	reduced := make([]rt.PeerInfo, 0, len(waitlist))
+
 	for _, p := range waitlist {
 		reduced = append(reduced, p)
 		seen[p.Id] = struct{}{}
@@ -180,9 +167,12 @@ func (n *Node) iterativeLookup(
 	return reduced, "", false
 }
 
-// sendParallel fans out rpcFn across all peers in waitlist concurrently
-// and collects all results before returning.
-func (n *Node) sendParallel(ctx context.Context, waitlist []rt.PeerInfo, rpcFn func(context.Context, rt.PeerInfo) result) []result {
+// sendParallel executes rpcFn on every node from waitlist, then fans out every response to returning channel. 
+func (n *Node) sendParallel(
+	ctx context.Context,
+	waitlist []rt.PeerInfo, 
+	rpcFn func(context.Context, rt.PeerInfo) result,
+) []result {
 	ch := make(chan result, len(waitlist))
 	for _, ni := range waitlist {
 		go func(ni rt.PeerInfo) {
