@@ -11,7 +11,10 @@ type PeerInfo struct {
 	Id    pid.PeerID
 	dhtID pid.ID
 	Addr  addr.Addr
+
+	// optimization fields
 	RTT   time.Duration
+	Color uint8
 
 	// TODO: add last usage time, etc.
 }
@@ -77,7 +80,7 @@ func (b *Bucket) Front() (PeerInfo, bool) {
 	return front.Value.(PeerInfo), true
 }
 
-// RemoveFront removes and returns first peer from the list. 
+// RemoveFront removes and returns first peer from the list.
 // Otherwise, empty peer with false is returned
 func (b *Bucket) RemoveFront() (PeerInfo, bool) {
 	front := b.list.Front()

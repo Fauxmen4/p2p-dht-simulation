@@ -56,3 +56,18 @@ func SortClosestPeers(peers []PeerInfo, target pid.ID) []PeerInfo {
 	}
 	return out
 }
+
+func ClosestPeer(peers []PeerInfo, target pid.ID) (PeerInfo, bool) {
+	sorter := peerDistanceSorter{
+		peers:  make([]peerDistance, 0, len(peers)),
+		target: target,
+	}
+	for _, p := range peers {
+		sorter.appendPeer(p)
+	}
+	sorter.sort()
+	if len(sorter.peers) < 1 {
+		return PeerInfo{}, false
+	}
+	return sorter.peers[0].p, true
+}
