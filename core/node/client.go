@@ -115,13 +115,28 @@ func (n *Node) newFindNodeMsg(to addr.Addr, targetID pid.PeerID) *msg.Message {
 }
 
 func (n *Node) newFindValueMsg(to addr.Addr, targetID pid.PeerID) *msg.Message {
+	body := &msg.FindValueBody{TargetID: string(targetID)}
+	if n.palette != nil {
+		body.Bitmap = n.palette.Bitmask()
+	}
 	return &msg.Message{
 		ID:     msg.MsgID(uuid.NewString()),
 		Type:   msg.FindValueType,
 		To:     to,
 		From:   n.addr,
 		FromID: n.id,
-		Body:   &msg.FindValueBody{TargetID: string(targetID)},
+		Body:   body,
+	}
+}
+
+func (n *Node) newStoreCacheMsg(to addr.Addr, key, value string) *msg.Message {
+	return &msg.Message{
+		ID:     msg.MsgID(uuid.NewString()),
+		Type:   msg.StoreCacheType,
+		To:     to,
+		From:   n.addr,
+		FromID: n.id,
+		Body:   &msg.StoreCacheBody{Key: key, Value: value},
 	}
 }
 
