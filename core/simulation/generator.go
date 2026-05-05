@@ -7,7 +7,7 @@ import (
 	"my-kad-dht/core/config"
 	cfg "my-kad-dht/core/config"
 	pid "my-kad-dht/core/id"
-	"time"
+	"my-kad-dht/pkg/rtt"
 
 	"github.com/brianvoe/gofakeit/v7"
 	"gonum.org/v1/gonum/stat/distuv"
@@ -15,6 +15,8 @@ import (
 
 // Generator is a deterministic source of randomness
 type generator struct {
+	cfg *cfg.Config
+
 	seed    uint64
 	rng     *rand.Rand
 	faker   *gofakeit.Faker
@@ -37,6 +39,7 @@ func NewGenerator(config *cfg.Config) *generator {
 	}
 
 	return &generator{
+		cfg:          config,
 		seed:         config.Seed,
 		rng:          rng,
 		faker:        faker,
@@ -80,8 +83,8 @@ func randomN[T any](rng *rand.Rand, slice []T, n int) []T {
 }
 
 // Return n random IDs of bootstrap nodes
-func (g *generator) randomBootstrapIDs(n int) []pid.PeerID {
-	return randomN(g.rng, g.bootstrapIDs, n)
+func (g *generator) randomBootstrapIDs() []pid.PeerID {
+	return randomN(g.rng, g.bootstrapIDs, g.cfg.Network.Bootstrap_conns)
 }
 
 // Add bootstrap node ID to internal ID storage.
@@ -91,15 +94,15 @@ func (g *generator) addBootstrapID(id pid.PeerID) {
 }
 
 // Generate random data for n bootstrap nodes.
-func (g *generator) nBootstrapNodes(config *config.Config) []cfg.NodeSpec {
-	n := config.Network.Bootstrap_count
+func (g *generator) nBootstrapNodes() []cfg.NodeSpec {
+	n := g.cfg.Network.Bootstrap_count
 	nodes := make([]cfg.NodeSpec, 0, n)
 	for range n {
 		ID := g.id()
 		nodes = append(nodes, cfg.NodeSpec{
-			ID:      ID,
-			Addr:    g.addr(),
-			Latency: g.assignLatency(config.Latency),
+			ID:    ID,
+			Addr:  g.addr(),
+			Coord: g.assignCoordinates(),
 		})
 		g.bootstrapIDs = append(g.bootstrapIDs, ID)
 	}
@@ -109,15 +112,15 @@ func (g *generator) nBootstrapNodes(config *config.Config) []cfg.NodeSpec {
 
 // Generate random data for number of nodes from config.
 // Differs from nBootstrapNodes by bootstrap nodes choice.
-func (g *generator) nNewNodes(cfg *config.Config) []cfg.NodeSpec {
-	nodes := make([]config.NodeSpec, cfg.Network.NodesCount)
-	for i := range cfg.Network.NodesCount {
+func (g *generator) nNewNodes() []cfg.NodeSpec {
+	nodes := make([]config.NodeSpec, g.cfg.Network.NodesCount)
+	for i := range g.cfg.Network.NodesCount {
 		ID := g.id()
 		nodes[i] = config.NodeSpec{
 			ID:           ID,
 			Addr:         g.addr(),
-			BootstrapVia: g.randomBootstrapIDs(cfg.Network.Bootstrap_conns),
-			Latency:      g.assignLatency(cfg.Latency),
+			BootstrapVia: g.randomBootstrapIDs(),
+			Coord:        g.assignCoordinates(),
 		}
 		// if !cfg.JoinViaBootstrap {
 		// 	g.addBootstrapID(ID)
@@ -126,27 +129,32 @@ func (g *generator) nNewNodes(cfg *config.Config) []cfg.NodeSpec {
 	return nodes
 }
 
-func (g *generator) newNode(cfg *config.Config) config.NodeSpec {
+func (g *generator) newNode() config.NodeSpec {
 	return config.NodeSpec{
 		ID:           g.id(),
 		Addr:         g.addr(),
-		BootstrapVia: g.randomBootstrapIDs(cfg.Network.Bootstrap_conns),
+		BootstrapVia: g.randomBootstrapIDs(),
 	}
 }
 
-func (g *generator) assignLatency(cfg config.Latency) time.Duration {
-	if cfg.SlowMs == 0 {
-		return 0
-	}
+func (g *generator) assignCoordinates() rtt.Coord {
+	latency := g.cfg.Latency
 
-	var baseMs int
-	if g.rng.Float64() < cfg.SlowFraction {
-		baseMs = cfg.SlowMs
+	// calculate last-mile-delay aka height
+	var height float64
+	if g.rng.Float64() < latency.ServerFraction {
+		height = latency.ServerMean + g.rng.NormFloat64()*latency.ServerStd
 	} else {
-		baseMs = cfg.FastMs
+		height = latency.HomeMean + g.rng.NormFloat64()*latency.HomeStd
 	}
-	base := time.Duration(baseMs) * time.Millisecond
-	return base
+	height = max(height, latency.MinHeight)
+
+	// compose coordinates
+	return rtt.Coord{
+		X:      g.rng.Float64() * g.cfg.Latency.AreaSize,
+		Y:      g.rng.Float64() * g.cfg.Latency.AreaSize,
+		Height: height,
+	}
 }
 
 // Publish data generation

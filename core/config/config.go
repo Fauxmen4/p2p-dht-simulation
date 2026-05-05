@@ -9,14 +9,11 @@ import (
 )
 
 type Config struct {
-	Seed uint64 `yaml:"seed"`
-
-	Kademlia Kademlia `yaml:"kademlia"`
-
-	Network P2pNetwork `yaml:"network"`
-	Latency Latency    `yaml:"latency,omitempty"`
-
-	Workload Workload `yaml:"workload,omitempty"`
+	Seed     uint64     `yaml:"seed"`
+	Kademlia Kademlia   `yaml:"kademlia"`
+	Network  P2pNetwork `yaml:"network"`
+	Latency  Latency    `yaml:"latency,omitempty"`
+	Workload Workload   `yaml:"workload,omitempty"`
 }
 
 type Kademlia struct {
@@ -25,23 +22,37 @@ type Kademlia struct {
 	Alpha   int `yaml:"alpha"`
 	Beta    int `yaml:"beta"`
 
-	PeerDiversity bool `yaml:"peer_diversity"`
+	// optimizations
+	PeerDiversity bool   `yaml:"peer_diversity" env-default:"false"`
+	Shades        Shades `yaml:"shades,omitempty"`
+}
+
+type Shades struct {
+	Colors    uint64 `yaml:"colors"`
+	CacheSize int    `yaml:"cache_size"`
 }
 
 type P2pNetwork struct {
 	NodesCount int `yaml:"nodes_count"`
 
+	DropRate float64 `yaml:"drop_rate" env-default:"0"` // probability [0, 1) of dropping any single message
+
 	// Bootstrap
 	JoinViaBootstrap bool `yaml:"join_via_bootstrap" env-default:"true"`
 	Bootstrap_count  int  `yaml:"bootstrap_count"`
 	Bootstrap_conns  int  `yaml:"bootstrap_conns"`
+
+	Latency Latency `yaml:"latency"`
 }
 
 type Latency struct {
-	SlowFraction   float64 `yaml:"slow_fraction"`   // fraction of slow nodes
-	FastMs         int     `yaml:"fast_ms"`         // mean delay of fast node in ms
-	SlowMs         int     `yaml:"slow_ms"`         // 		     ... slow node ...
-	JitterFraction float64 `yaml:"jitter_fraction"` //
+	AreaSize       float64 `yaml:"area_size" env-default:"85.0"` // AreaSize of 2D square: [0, AreaSize] x [0. AreaSize] in ms.
+	ServerFraction float64 `yaml:"server_fraction" env-default:"0.3"`
+	ServerMean     float64 `yaml:"server_mean" env-default:"0.5"`
+	ServerStd      float64 `yaml:"server_std" env-default:"0.3"`
+	HomeMean       float64 `yaml:"home_mean" env-default:"6.0"`
+	HomeStd        float64 `yaml:"home_std" env-default:"3.5"`
+	MinHeight      float64 `yaml:"min_height" env-default:"0.1"`
 }
 
 type Workload struct {

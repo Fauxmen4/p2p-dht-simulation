@@ -1,7 +1,6 @@
 package routingtable
 
 import (
-	"container/list"
 	pid "my-kad-dht/core/id"
 	"sort"
 )
@@ -34,10 +33,8 @@ func (pds *peerDistanceSorter) appendPeer(peerInfo PeerInfo) {
 	})
 }
 
-func (pds *peerDistanceSorter) appendPeersFromList(l *list.List) {
-	for e := l.Front(); e != nil; e = e.Next() {
-		pds.appendPeer(e.Value.(PeerInfo))
-	}
+func (pds *peerDistanceSorter) appendPeersFromBucket(b *Bucket) {
+	b.ForEach(pds.appendPeer)
 }
 
 func (pds *peerDistanceSorter) sort() {
@@ -58,4 +55,19 @@ func SortClosestPeers(peers []PeerInfo, target pid.ID) []PeerInfo {
 		out = append(out, p.p)
 	}
 	return out
+}
+
+func ClosestPeer(peers []PeerInfo, target pid.ID) (PeerInfo, bool) {
+	sorter := peerDistanceSorter{
+		peers:  make([]peerDistance, 0, len(peers)),
+		target: target,
+	}
+	for _, p := range peers {
+		sorter.appendPeer(p)
+	}
+	sorter.sort()
+	if len(sorter.peers) < 1 {
+		return PeerInfo{}, false
+	}
+	return sorter.peers[0].p, true
 }

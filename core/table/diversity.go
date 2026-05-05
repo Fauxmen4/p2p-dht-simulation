@@ -34,21 +34,21 @@ func (rt *RoutingTable) diversitySlot(p pid.PeerID, bucketLevel int) uint {
 // slot is shared by at least one other contact in the bucket.
 // Returns (zero, false) if all slots are unique (no duplicates exist).
 func (rt *RoutingTable) lrsAmongDuplicates(b *Bucket, bucketLevel int) (PeerInfo, bool) {
-	// count contacts per slot
 	slotCount := make(map[uint]int)
-	for e := b.list.Front(); e != nil; e = e.Next() {
-		pi := e.Value.(PeerInfo)
-		slot := rt.diversitySlot(pi.Id, bucketLevel)
-		slotCount[slot]++
-	}
+	b.ForEach(func(pi PeerInfo) {
+		slotCount[rt.diversitySlot(pi.Id, bucketLevel)]++
+	})
 
 	// find LRS (front of list) with a duplicated slot
-	for e := b.list.Front(); e != nil; e = e.Next() {
-		pi := e.Value.(PeerInfo)
-		slot := rt.diversitySlot(pi.Id, bucketLevel)
-		if slotCount[slot] > 1 {
-			return pi, true
+	var found PeerInfo
+	ok := false
+	b.ForEach(func(pi PeerInfo) {
+		if ok {
+			return
 		}
-	}
-	return PeerInfo{}, false
+		if slotCount[rt.diversitySlot(pi.Id, bucketLevel)] > 1 {
+			found, ok = pi, true
+		}
+	})
+	return found, ok
 }

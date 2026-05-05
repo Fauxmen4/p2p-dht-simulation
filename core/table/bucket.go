@@ -4,12 +4,17 @@ import (
 	"container/list"
 	"my-kad-dht/core/addr"
 	pid "my-kad-dht/core/id"
+	"time"
 )
 
 type PeerInfo struct {
 	Id    pid.PeerID
 	dhtID pid.ID
 	Addr  addr.Addr
+
+	// optimization fields
+	RTT   time.Duration
+	Color uint8
 
 	// TODO: add last usage time, etc.
 }
@@ -55,20 +60,40 @@ func (b *Bucket) Remove(id pid.PeerID) bool {
 	return false
 }
 
-func (b *Bucket) Peers() []PeerInfo {
-	peers := make([]PeerInfo, 0, b.Len())
+// MoveToBack looks for contact with specified ID and move it to the back of the list.
+func (b *Bucket) MoveToBack(id pid.PeerID) {
 	for e := b.list.Front(); e != nil; e = e.Next() {
-		p := e.Value.(PeerInfo)
-		peers = append(peers, p)
+		if e.Value.(PeerInfo).Id == id {
+			b.list.MoveToBack(e)
+			return
+		}
 	}
-	return peers
 }
 
-func (b *Bucket) PeerIDs() []pid.PeerID {
-	peerIDs := make([]pid.PeerID, 0, b.Len())
-	for e := b.list.Front(); e != nil; e = e.Next() {
-		p := e.Value.(PeerInfo)
-		peerIDs = append(peerIDs, p.Id)
+// Front returns first peerInfo in bucket in case it exists.
+// Otherwise, empty peer with false is returned
+func (b *Bucket) Front() (PeerInfo, bool) {
+	front := b.list.Front()
+	if front == nil {
+		return PeerInfo{}, false
 	}
-	return peerIDs
+	return front.Value.(PeerInfo), true
+}
+
+// RemoveFront removes and returns first peer from the list.
+// Otherwise, empty peer with false is returned
+func (b *Bucket) RemoveFront() (PeerInfo, bool) {
+	front := b.list.Front()
+	if front == nil {
+		return PeerInfo{}, false
+	}
+	b.list.Remove(front)
+	return front.Value.(PeerInfo), true
+}
+
+// ForEach applies specified function to every peer in list
+func (b *Bucket) ForEach(fn func(PeerInfo)) {
+	for e := b.list.Front(); e != nil; e = e.Next() {
+		fn(e.Value.(PeerInfo))
+	}
 }

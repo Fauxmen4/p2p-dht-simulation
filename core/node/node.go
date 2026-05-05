@@ -7,8 +7,9 @@ import (
 	pid "my-kad-dht/core/id"
 	msg "my-kad-dht/core/message"
 	"my-kad-dht/core/metrics"
-	strg "my-kad-dht/core/storage"
 	rt "my-kad-dht/core/table"
+	"my-kad-dht/pkg/rtt"
+	strg "my-kad-dht/pkg/storage"
 	"sync"
 	"time"
 )
@@ -27,7 +28,7 @@ type storage interface {
 
 type Transport interface {
 	// SendAsync delivers a message in a fire-and-forget manner.
-	SendAsync(to addr.Addr, m *msg.Message)
+	SendAsync(m *msg.Message)
 }
 
 type Node struct {
@@ -44,6 +45,8 @@ type Node struct {
 	// For pending messages used during operation
 	pendingMu sync.Mutex
 	pending   map[msg.MsgID]chan *msg.Message
+
+	Coord rtt.Coord // node coordinates in 2D + height model for delay imitating
 
 	KVStorage storage
 	Metrics   *metrics.Storage
@@ -94,9 +97,9 @@ func (n *Node) sendRPC(ctx context.Context, to addr.Addr, m *msg.Message) (*msg.
 		n.pendingMu.Unlock()
 	}()
 
-	n.transport.SendAsync(to, m)
+	n.transport.SendAsync(m)
 
-	ctx, cancel := context.WithTimeout(ctx, 1000*time.Millisecond)
+	ctx, cancel := context.WithTimeout(ctx, 500*time.Millisecond)
 	defer cancel()
 
 	select {
@@ -119,7 +122,7 @@ func (n *Node) addContact(id pid.PeerID, address addr.Addr) {
 
 	//! is it correct to do it async way?
 	// ping earliest seen and replace it in case its dead
-	go func() {
+	go func(id pid.PeerID, address addr.Addr) {
 		ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
 		defer cancel()
 		if n.Ping(ctx, lrs) {
@@ -127,5 +130,5 @@ func (n *Node) addContact(id pid.PeerID, address addr.Addr) {
 		} else {
 			n.RoutingTable.ReplaceIfDead(lrs.Id, id, address)
 		}
-	}()
+	}(id, address)
 }

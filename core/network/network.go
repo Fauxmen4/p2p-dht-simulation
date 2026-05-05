@@ -7,6 +7,7 @@ import (
 	cfg "my-kad-dht/core/config"
 	msg "my-kad-dht/core/message"
 	"my-kad-dht/core/node"
+	"my-kad-dht/pkg/rtt"
 	"sync"
 	"time"
 )
@@ -14,9 +15,10 @@ import (
 type Network struct {
 	config cfg.Kademlia // configuration of everything
 
-	mu      sync.RWMutex
-	nodes   map[addr.Addr]*node.Node // map with all nodes (even bootstrap), used to address messages from one node to another
-	latency map[addr.Addr]time.Duration
+	mu    sync.RWMutex
+	nodes map[addr.Addr]*node.Node // map with all nodes (even bootstrap), used to address messages from one node to another
+
+	dropRate float64 // probability [0, 1) of dropping any single message
 
 	bootstrapNodes []*node.Node // nodes for joining the network
 }
@@ -24,10 +26,10 @@ type Network struct {
 // Network constructor
 func New(cfg cfg.Config, bootstrapCfg []cfg.NodeSpec) *Network {
 	net := &Network{
-		config:  cfg.Kademlia,
-		mu:      sync.RWMutex{},
-		nodes:   make(map[addr.Addr]*node.Node),
-		latency: make(map[addr.Addr]time.Duration),
+		config:   cfg.Kademlia,
+		mu:       sync.RWMutex{},
+		nodes:    make(map[addr.Addr]*node.Node),
+		dropRate: cfg.Network.DropRate,
 	}
 
 	// bootstrap nodes
@@ -47,21 +49,31 @@ func (n *Network) StartNetwork() {
 }
 
 // Fire-and-Forget
-func (net *Network) SendAsync(to addr.Addr, m *msg.Message) {
+func (net *Network) SendAsync(m *msg.Message) {
 	net.mu.RLock()
-	n, ok := net.nodes[to]
-	base := net.latency[to]
+	receiver, ok1 := net.nodes[m.To]
+	sender, ok2 := net.nodes[m.From]
 	net.mu.RUnlock()
-	if !ok {
+
+	if !ok1 && !ok2 {
+		// receiver is out
 		return
 	}
+
 	go func() {
-		if base > 0 {
-			jitter := time.Duration(float64(base) * rand.Float64())
-			delay := base + jitter
-			delay = max(delay, 0)
-			time.Sleep(delay)
+		// possible packet loss
+		if net.dropRate > 0 && rand.Float64() < net.dropRate {
+			return
 		}
-		n.InputCh() <- m
+
+		time.Sleep(rtt.OneWayDelay(receiver.Coord, sender.Coord))
+
+		// sending
+		select {
+		case receiver.InputCh() <- m:
+		// to prevent leaks in case receiver is out
+		case <-time.After(time.Second):
+			return
+		}
 	}()
 }
