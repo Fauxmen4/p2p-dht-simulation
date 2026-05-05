@@ -75,11 +75,30 @@ func (n *Node) HandleRPC(req *msg.Message) *msg.Message {
 
 	case msg.FindValueType:
 		body := req.Body.(*msg.FindValueBody)
-		if value, ok := n.findValue(body.TargetID); ok {
-			resp.Body = msg.FindValueResponse{Value: value}
-		} else {
-			resp.Body = msg.FindNodeResponse{Nearest: n.findNode(body.TargetID)}
+		value, found := n.findValue(body.TargetID)
+		if !found && n.shadeCache != nil {
+			value, found = n.shadeCache.Get(body.TargetID)
 		}
+
+		fvResp := msg.FindValueResponse{}
+		if found {
+			fvResp.Value = value
+		} else {
+			fvResp.Nearest = n.findNode(body.TargetID)
+		}
+
+		if n.shadeCache != nil {
+			fvResp.IsNeeded = n.shadeCache.Seen(body.TargetID)
+			fvResp.ColorNodes = n.palette.GetNodesByBitmask(n.palette.Bitmask()&^body.Bitmap, 1)
+		}
+		resp.Body = fvResp
+
+	case msg.StoreCacheType:
+		body := req.Body.(*msg.StoreCacheBody)
+		if n.shadeCache != nil {
+			n.shadeCache.Set(body.Key, body.Value)
+		}
+		resp.Success = true
 
 	default:
 		// TODO: unknown message type error
