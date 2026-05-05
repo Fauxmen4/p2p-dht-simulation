@@ -1,9 +1,8 @@
 // Palette for implementing Shades caching & routing strategy
-package node
+package routingtable
 
 import (
 	pid "my-kad-dht/core/id"
-	rt "my-kad-dht/core/table"
 	bs "my-kad-dht/pkg/bitset"
 	"sync"
 )
@@ -11,8 +10,8 @@ import (
 type Palette struct {
 	mu      sync.RWMutex
 	ownerID pid.PeerID
-	buckets map[uint8][]rt.PeerInfo // color -> list of contacts
-	index   map[pid.PeerID]uint8    // nodeID -> color
+	buckets map[uint8][]PeerInfo // color -> list of contacts
+	index   map[pid.PeerID]uint8 // nodeID -> color
 
 	colors  uint8     // number of possible colors
 	bitmask bs.BitSet // bitmask has 0 for empty colors
@@ -21,7 +20,7 @@ type Palette struct {
 func NewPalette(ownerID pid.PeerID, colors uint8) *Palette {
 	return &Palette{
 		ownerID: ownerID,
-		buckets: make(map[uint8][]rt.PeerInfo),
+		buckets: make(map[uint8][]PeerInfo),
 		index:   make(map[pid.PeerID]uint8),
 		colors:  colors,
 		bitmask: bs.BitSet{},
@@ -29,7 +28,7 @@ func NewPalette(ownerID pid.PeerID, colors uint8) *Palette {
 }
 
 // Add adds contact to palette and returns true in case it was added.
-func (p *Palette) Add(pi rt.PeerInfo) bool {
+func (p *Palette) Add(pi PeerInfo) bool {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
@@ -39,7 +38,7 @@ func (p *Palette) Add(pi rt.PeerInfo) bool {
 
 	if _, ok := p.buckets[pi.Color]; !ok {
 		p.bitmask.Set(pi.Color)
-		p.buckets[pi.Color] = []rt.PeerInfo{}
+		p.buckets[pi.Color] = []PeerInfo{}
 	}
 	p.buckets[pi.Color] = append(p.buckets[pi.Color], pi)
 	p.index[pi.Id] = pi.Color
@@ -66,6 +65,7 @@ func (p *Palette) Remove(id pid.PeerID) bool {
 				delete(p.buckets, color)
 				p.bitmask.Unset(color)
 			}
+			break
 		}
 	}
 
@@ -77,31 +77,26 @@ func (p *Palette) Remove(id pid.PeerID) bool {
 func (p *Palette) Bitmask() uint64 {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
-	return p.Bitmask()
+	return p.bitmask.Bits()
 }
 
-// ClosestToKey returns closest node's contact of the same color as key.
-func (p *Palette) ClosestToKey(key pid.ID) rt.PeerInfo {
+// ClosestToKey returns the closest node of the same color as key.
+// Returns false if the palette has no nodes of that color.
+func (p *Palette) ClosestToKey(key pid.ID) (PeerInfo, bool) {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
 
 	color := pid.ColorId(key, p.colors)
-
-	pi, ok := rt.ClosestPeer(p.buckets[color], key)
-	if !ok {
-		//!!!!!!!!!!!!!
-		panic("what should i do?")
-	}
-
-	return pi
+	return ClosestPeer(p.buckets[color], key)
 }
 
-// GetNodesByBitmask returns up to k contacts for 0 (empty color) in bitmask.
-func (p *Palette) GetNodesByBitmask(bitMask uint64, k int) []rt.PeerInfo {
+// GetNodesByBitmask returns one contact per color that has a 1-bit in bitMask,
+// skipping colors the palette has no nodes for.
+func (p *Palette) GetNodesByBitmask(bitMask uint64, k int) []PeerInfo {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
 
-	result := make([]rt.PeerInfo, 0)
+	result := make([]PeerInfo, 0)
 
 	for i := uint8(0); i < p.colors; i++ {
 		if (bitMask & (1 << i)) != 0 { // if this color needs to be included in result
