@@ -1,6 +1,8 @@
 package pid
 
 import (
+	"crypto/sha256"
+	"encoding/binary"
 	"fmt"
 	"math/bits"
 )
@@ -52,4 +54,15 @@ type PeerID string
 
 func ConvertPeerID(id PeerID) ID {
 	return ID([]byte(id))
+}
+
+func ColorId(id ID, colors uint8) uint8 {
+	hash := sha256.Sum256(append(
+		[]byte("shades-color"), 
+		id[:]...,
+	))
+
+	return uint8(
+		binary.BigEndian.Uint64(hash[:8]) % uint64(colors),
+	)
 }
