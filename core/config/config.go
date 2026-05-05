@@ -22,7 +22,14 @@ type Kademlia struct {
 	Alpha   int `yaml:"alpha"`
 	Beta    int `yaml:"beta"`
 
-	PeerDiversity bool `yaml:"peer_diversity"`
+	// optimizations
+	PeerDiversity bool   `yaml:"peer_diversity" env-default:"false"`
+	Shades        Shades `yaml:"shades,omitempty"`
+}
+
+type Shades struct {
+	Colors    uint64 `yaml:"colors"`
+	CacheSize int    `yaml:"cache_size"`
 }
 
 type P2pNetwork struct {
