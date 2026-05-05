@@ -15,6 +15,7 @@ const (
 	StoreType
 	FindNodeType
 	FindValueType
+	StoreCacheType
 )
 
 type Message struct {
@@ -35,6 +36,7 @@ type Message struct {
 type FindNodeBody struct{ TargetID string }
 type FindValueBody struct{ TargetID string }
 type StoreBody struct{ Key, Value string }
+type StoreCacheBody struct{ Key, Value string }
 
 type FindNodeResponse struct {
 	Nearest []rt.PeerInfo
