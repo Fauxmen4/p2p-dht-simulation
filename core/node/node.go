@@ -51,6 +51,9 @@ type Node struct {
 	KVStorage storage
 	Metrics   *metrics.Storage
 
+	palette    *rt.Palette    // Shades: color-keyed routing table (nil if Shades disabled)
+	shadeCache *ShadeCache    // Shades: TinyLFU-admitted cache (nil if Shades disabled)
+
 	cancel context.CancelFunc
 }
 
@@ -65,6 +68,11 @@ func NewNode(id pid.PeerID, addr addr.Addr, cfg cfg.Kademlia, t Transport) *Node
 		pending:      make(map[msg.MsgID]chan *msg.Message),
 		KVStorage:    strg.New(),
 		Metrics:      metrics.NewStorage(),
+	}
+
+	if cfg.Shades.Colors > 0 {
+		node.palette = rt.NewPalette(id, uint8(cfg.Shades.Colors))
+		node.shadeCache = NewShadeCache(cfg.Shades.CacheSize)
 	}
 
 	return node
