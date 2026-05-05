@@ -81,7 +81,18 @@ func (n *Node) ValueLookup(ctx context.Context, key string) (string, bool) {
 		return val, true
 	}
 	start := time.Now()
-	value, ok, hops := n.keyLookup(ctx, string(hKey))
+
+	var (
+		value string
+		ok bool
+		hops int
+	)
+	if n.shadeCache != nil {
+		value, ok, hops = n.shadesKeyLookup(ctx, key)
+	} else {
+		value, ok, hops = n.keyLookup(ctx, string(hKey))
+	}
+
 	n.Metrics.NewSearch(key, hops, ok, time.Since(start))
 	return value, ok
 }

@@ -1,7 +1,7 @@
-package node
+package cache
 
 import (
-	bloomfilter "my-kad-dht/pkg/bloom-filter"
+	bf "my-kad-dht/pkg/bloom-filter"
 	"sync"
 )
 
@@ -15,19 +15,19 @@ type ShadeCache struct {
 	data map[string]string
 	keys []string // circular eviction buffer; grows until len == cap
 	hand int      // index of the next eviction candidate
-	freq *bloomfilter.FrequencyEstimator
+	freq *bf.FrequencyEstimator
 }
 
 func NewShadeCache(capacity int) *ShadeCache {
 	window := capacity * 10
-	if window < bloomfilter.DefaultWindow {
-		window = bloomfilter.DefaultWindow
+	if window < bf.DefaultWindow {
+		window = bf.DefaultWindow
 	}
 	return &ShadeCache{
 		cap:  capacity,
 		data: make(map[string]string, capacity),
 		keys: make([]string, 0, capacity),
-		freq: bloomfilter.New(bloomfilter.DefaultDepth, bloomfilter.DefaultWidth, window),
+		freq: bf.New(bf.DefaultDepth, bf.DefaultWidth, window),
 	}
 }
 
