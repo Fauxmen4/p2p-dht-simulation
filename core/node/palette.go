@@ -75,11 +75,16 @@ func (p *Palette) Remove(id pid.PeerID) bool {
 }
 
 func (p *Palette) Bitmask() uint64 {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
 	return p.Bitmask()
 }
 
 // ClosestToKey returns closest node's contact of the same color as key.
 func (p *Palette) ClosestToKey(key pid.ID) rt.PeerInfo {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+
 	color := pid.ColorId(key, p.colors)
 
 	pi, ok := rt.ClosestPeer(p.buckets[color], key)
@@ -93,6 +98,9 @@ func (p *Palette) ClosestToKey(key pid.ID) rt.PeerInfo {
 
 // GetNodesByBitmask returns up to k contacts for 0 (empty color) in bitmask.
 func (p *Palette) GetNodesByBitmask(bitMask uint64, k int) []rt.PeerInfo {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+
 	result := make([]rt.PeerInfo, 0)
 
 	for i := uint8(0); i < p.colors; i++ {
