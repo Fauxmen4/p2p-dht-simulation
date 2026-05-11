@@ -19,6 +19,10 @@ type PeerInfo struct {
 	// TODO: add last usage time, etc.
 }
 
+func (p PeerInfo) DhtID() pid.ID {
+	return p.dhtID
+}
+
 type Bucket struct {
 	list *list.List
 }
@@ -96,4 +100,35 @@ func (b *Bucket) ForEach(fn func(PeerInfo)) {
 	for e := b.list.Front(); e != nil; e = e.Next() {
 		fn(e.Value.(PeerInfo))
 	}
+}
+
+// UpdateRTT sets the RTT for the peer with the given id.
+// Returns true if the peer was found and updated.
+func (b *Bucket) UpdateRTT(id pid.PeerID, rtt time.Duration) bool {
+	for e := b.list.Front(); e != nil; e = e.Next() {
+		p := e.Value.(PeerInfo)
+		if p.Id == id {
+			p.RTT = rtt
+			e.Value = p
+			return true
+		}
+	}
+	return false
+}
+
+// AverageRTT returns the mean RTT across all peers that have a measured RTT > 0.
+// Returns 0 if no peer has a measured RTT yet.
+func (b *Bucket) AverageRTT() time.Duration {
+	var total time.Duration
+	var count int
+	for e := b.list.Front(); e != nil; e = e.Next() {
+		if rtt := e.Value.(PeerInfo).RTT; rtt > 0 {
+			total += rtt
+			count++
+		}
+	}
+	if count == 0 {
+		return 0
+	}
+	return total / time.Duration(count)
 }

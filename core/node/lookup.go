@@ -2,6 +2,10 @@ package node
 
 import (
 	"context"
+	"math/big"
+	"sort"
+	"time"
+
 	pid "my-kad-dht/core/id"
 	msg "my-kad-dht/core/message"
 	rt "my-kad-dht/core/table"
@@ -154,20 +158,104 @@ func (n *Node) iterativeLookup(
 			}
 		}
 		reduced = rt.SortClosestPeers(reduced, targetDhtID)
-		waitlist = waitlist[:0]
+		// Collect unqueried candidates in distance order, then apply KadRTT
+		// RTT-based selection with the hop-count safety condition (Eq. 3).
+		var unqueried []rt.PeerInfo
 		for _, p := range reduced {
 			if _, ok := queried[p.Id]; !ok {
-				waitlist = append(waitlist, p)
-			}
-			if len(waitlist) == n.kad.Alpha {
-				break
+				unqueried = append(unqueried, p)
 			}
 		}
+		waitlist = n.selectKadRTT(unqueried, n.kad.Alpha, targetDhtID)
 	}
 	return reduced, "", false
 }
 
-// sendParallel executes rpcFn on every node from waitlist, then fans out every response to returning channel. 
+// rttEstimate returns the known RTT for p, or the average RTT of its bucket as
+// a fallback when p has not been directly queried yet.
+func (n *Node) rttEstimate(p rt.PeerInfo) time.Duration {
+	if rtt := n.RoutingTable.GetPeerRTT(p.Id); rtt > 0 {
+		return rtt
+	}
+	return n.RoutingTable.BucketAverageRTT(p.Id)
+}
+
+// distanceLessThanDouble reports whether dRTT < 2*dKad using exact big-integer
+// arithmetic over the XOR byte slices.  This is the KadRTT hop-count condition:
+// selecting a peer by RTT instead of distance is safe as long as its distance to
+// the target is less than twice the closest-known distance (Eq. 3 in the paper).
+func distanceLessThanDouble(dRTT, dKad pid.ID) bool {
+	a := new(big.Int).SetBytes(dRTT)
+	b := new(big.Int).SetBytes(dKad)
+	b.Lsh(b, 1) // b = 2 * dKad
+	return a.Cmp(b) < 0
+}
+
+// selectKadRTT implements the KadRTT modified-FindNode candidate selection
+// (Fig. 9 of the paper).  It receives unqueried candidates already sorted by
+// XOR distance (closest first) and returns up to alpha peers chosen by RTT
+// while keeping the hop-count upper bound equal to standard Kademlia.
+//
+// Selection steps:
+//  1. dMin = distance of the closest candidate (index 0 after SortClosestPeers).
+//  2. Re-sort candidates by ascending RTT estimate.
+//  3. Take the first alpha peers where d(p, target) < 2*dMin.
+//  4. Fall back to distance order if fewer than alpha were selected by RTT.
+func (n *Node) selectKadRTT(unqueried []rt.PeerInfo, alpha int, targetID pid.ID) []rt.PeerInfo {
+	if len(unqueried) == 0 {
+		return nil
+	}
+
+	// Step 1: dMin is the distance of the peer at index 0 (closest by distance,
+	// since unqueried was produced from SortClosestPeers output).
+	dMin := pid.XOR(unqueried[0].DhtID(), targetID)
+
+	// Step 2: sort a copy by ascending RTT estimate.
+	byRTT := make([]rt.PeerInfo, len(unqueried))
+	copy(byRTT, unqueried)
+	sort.Slice(byRTT, func(i, j int) bool {
+		ri := n.rttEstimate(byRTT[i])
+		rj := n.rttEstimate(byRTT[j])
+		if ri == 0 && rj == 0 {
+			return false
+		}
+		if ri == 0 {
+			return false // unknown RTT goes after known
+		}
+		if rj == 0 {
+			return true
+		}
+		return ri < rj
+	})
+
+	// Step 3: select peers satisfying the logarithmic condition.
+	selected := make([]rt.PeerInfo, 0, alpha)
+	selectedSet := make(map[pid.PeerID]struct{}, alpha)
+	for _, p := range byRTT {
+		if len(selected) == alpha {
+			break
+		}
+		d := pid.XOR(p.DhtID(), targetID)
+		if distanceLessThanDouble(d, dMin) {
+			selected = append(selected, p)
+			selectedSet[p.Id] = struct{}{}
+		}
+	}
+
+	// Step 4: fill remaining slots with closest-by-distance peers (standard Kademlia fallback).
+	for _, p := range unqueried {
+		if len(selected) == alpha {
+			break
+		}
+		if _, already := selectedSet[p.Id]; !already {
+			selected = append(selected, p)
+		}
+	}
+
+	return selected
+}
+
+// sendParallel executes rpcFn on every node from waitlist, then fans out every response to returning channel.
 func (n *Node) sendParallel(
 	ctx context.Context,
 	waitlist []rt.PeerInfo, 

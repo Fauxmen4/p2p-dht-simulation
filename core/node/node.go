@@ -97,6 +97,7 @@ func (n *Node) sendRPC(ctx context.Context, to addr.Addr, m *msg.Message) (*msg.
 		n.pendingMu.Unlock()
 	}()
 
+	start := time.Now()
 	n.transport.SendAsync(m)
 
 	ctx, cancel := context.WithTimeout(ctx, 500*time.Millisecond)
@@ -104,6 +105,9 @@ func (n *Node) sendRPC(ctx context.Context, to addr.Addr, m *msg.Message) (*msg.
 
 	select {
 	case resp := <-respCh:
+		if resp.FromID != "" {
+			n.RoutingTable.UpdateRTT(resp.FromID, time.Since(start))
+		}
 		return resp, nil
 	case <-ctx.Done():
 		return nil, ctx.Err() // late responses will hit `default` in dispatcher

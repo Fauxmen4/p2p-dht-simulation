@@ -55,6 +55,7 @@ func (n *Node) HandleRPC(req *msg.Message) *msg.Message {
 		Type:       req.Type,
 		To:         req.From,
 		From:       req.To,
+		FromID:     n.id,
 		IsResponse: true,
 	}
 

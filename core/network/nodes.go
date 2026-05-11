@@ -13,6 +13,7 @@ func (net *Network) CreateNNodes(nodesCfg []cfg.NodeSpec, kademliaCfg cfg.Kademl
 	nodes := make([]*node.Node, len(nodesCfg))
 	for i := range nodes {
 		curr := node.NewNode(nodesCfg[i].ID, nodesCfg[i].Addr, kademliaCfg, net)
+		curr.Coord = nodesCfg[i].Coord
 		net.mu.Lock()
 		net.nodes[curr.Addr()] = curr
 		net.mu.Unlock()

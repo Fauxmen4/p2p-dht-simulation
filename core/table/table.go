@@ -6,6 +6,7 @@ import (
 	"my-kad-dht/core/config"
 	pid "my-kad-dht/core/id"
 	"sync"
+	"time"
 )
 
 type RoutingTable struct {
@@ -197,6 +198,28 @@ func (rt *RoutingTable) ReplaceIfDead(lrsID pid.PeerID, newP pid.PeerID, newAddr
 	}
 	b.RemoveFront()
 	return rt.addLocked(newP, newAddr)
+}
+
+// UpdateRTT stores the measured RTT for a peer in its bucket.
+func (rt *RoutingTable) UpdateRTT(id pid.PeerID, rtt time.Duration) {
+	rt.mu.Lock()
+	defer rt.mu.Unlock()
+	rt.buckets[rt.bucketIndex(id)].UpdateRTT(id, rtt)
+}
+
+// GetPeerRTT returns the stored RTT for a peer, or 0 if unknown.
+func (rt *RoutingTable) GetPeerRTT(id pid.PeerID) time.Duration {
+	rt.mu.RLock()
+	defer rt.mu.RUnlock()
+	return rt.buckets[rt.bucketIndex(id)].Get(id).RTT
+}
+
+// BucketAverageRTT returns the average RTT of the bucket that would contain id.
+// Used as a fallback estimate for peers whose RTT has not been measured yet.
+func (rt *RoutingTable) BucketAverageRTT(id pid.PeerID) time.Duration {
+	rt.mu.RLock()
+	defer rt.mu.RUnlock()
+	return rt.buckets[rt.bucketIndex(id)].AverageRTT()
 }
 
 // ReturnAllIds returns a list of ids from every node's kbucket
