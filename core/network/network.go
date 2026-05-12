@@ -55,8 +55,8 @@ func (net *Network) SendAsync(m *msg.Message) {
 	sender, ok2 := net.nodes[m.From]
 	net.mu.RUnlock()
 
-	if !ok1 && !ok2 {
-		// receiver is out
+	if !ok1 || !ok2 {
+		// one of the nodes has left the network — drop the message
 		return
 	}
 
