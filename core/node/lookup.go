@@ -15,6 +15,13 @@ type result struct {
 	ok       bool // true when RPC succeeded
 }
 
+type shadesResult struct {
+	result
+	isNeeded   bool
+	colorNodes []rt.PeerInfo
+	fromPeer   rt.PeerInfo
+}
+
 func (n *Node) nodeLookup(ctx context.Context, targetID pid.PeerID, k int) []rt.PeerInfo {
 	reduced, _, _ := n.iterativeLookup(
 		ctx, targetID,
@@ -52,8 +59,7 @@ func (n *Node) nodeLookup(ctx context.Context, targetID pid.PeerID, k int) []rt.
 }
 
 // keyLookup performs iterative FIND_VALUE lookup. Returns the value, success flag,
-// and number of rounds. Uses a per-round context to cancel remaining RPCs as soon
-// as any node returns the value.
+// and number of rounds. Dispatches to shadesKeyLookup when Shades is enabled.
 func (n *Node) keyLookup(ctx context.Context, key string) (string, bool, int) {
 	targetID := pid.PeerID(key)
 	hops := 0
@@ -71,7 +77,7 @@ func (n *Node) keyLookup(ctx context.Context, key string) (string, bool, int) {
 				}
 				switch body := resp.Body.(type) {
 				case msg.FindValueResponse:
-					ch <- result{value: body.Value, found: true, ok: true}
+					ch <- result{value: body.Value, found: body.Value != "", ok: true, peers: body.Nearest}
 				case msg.FindNodeResponse:
 					ch <- result{peers: body.Nearest, ok: true}
 				default:
@@ -82,13 +88,14 @@ func (n *Node) keyLookup(ctx context.Context, key string) (string, bool, int) {
 
 		var newPeers []rt.PeerInfo
 		var foundValue string
-		
 		valueFound := false
 
 		for range len(waitlist) {
-			r := <-ch // always drain to avoid goroutine leaks
+			r := <-ch
 			if !r.ok {
-				n.RoutingTable.Remove(r.deadPeer)
+				if r.deadPeer != "" {
+					n.RoutingTable.Remove(r.deadPeer)
+				}
 				continue
 			}
 			if r.found && !valueFound {
@@ -110,6 +117,119 @@ func (n *Node) keyLookup(ctx context.Context, key string) (string, bool, int) {
 	})
 
 	return value, found, hops
+}
+
+// shadesKeyLookup implements the Shades(2016) FIND_VALUE algorithm:
+//   - Each round sends FIND_VALUE to α closest unqueried nodes plus one side step
+//     to the closest same-color node from the local palette.
+//   - ColorNodes piggybacked in every response are merged into the local palette.
+//   - After the value is found, STORE_CACHE is sent fire-and-forget to every node
+//     that returned IsNeeded=true during the lookup.
+func (n *Node) shadesKeyLookup(ctx context.Context, key string) (string, bool, int) {
+	targetID := pid.PeerID(key)
+	keyDhtID := pid.ConvertPeerID(targetID)
+	hops := 0
+	var neededNodes []rt.PeerInfo
+
+	_, value, found := n.iterativeLookup(ctx, targetID, func(ctx context.Context, waitlist []rt.PeerInfo) ([]rt.PeerInfo, string, bool) {
+		hops++
+
+		// Build probe list: normal α waitlist nodes + side step to the closest
+		// same-color node from palette (if it is not already in the waitlist).
+		probes := append([]rt.PeerInfo(nil), waitlist...)
+		if colorNode, ok := n.palette.ClosestToKey(keyDhtID); ok && !hasPeer(probes, colorNode.Id) {
+			probes = append(probes, colorNode)
+		}
+
+		ch := make(chan shadesResult, len(probes))
+		roundCtx, cancelRound := context.WithCancel(ctx)
+
+		for _, ni := range probes {
+			go func(ni rt.PeerInfo) {
+				resp, err := n.sendRPC(roundCtx, ni.Addr, n.newFindValueMsg(ni.Addr, targetID))
+				if err != nil {
+					ch <- shadesResult{result: result{deadPeer: ni.Id}}
+					return
+				}
+				switch body := resp.Body.(type) {
+				case msg.FindValueResponse:
+					r := shadesResult{
+						result:     result{ok: true, peers: body.Nearest},
+						isNeeded:   body.IsNeeded,
+						colorNodes: body.ColorNodes,
+						fromPeer:   ni,
+					}
+					if body.Value != "" {
+						r.result.found = true
+						r.result.value = body.Value
+					}
+					ch <- r
+				case msg.FindNodeResponse:
+					ch <- shadesResult{result: result{peers: body.Nearest, ok: true}}
+				default:
+					ch <- shadesResult{result: result{ok: false}}
+				}
+			}(ni)
+		}
+
+		var newPeers []rt.PeerInfo
+		var foundValue string
+		valueFound := false
+
+		for range len(probes) {
+			sr := <-ch
+			if !sr.ok {
+				if sr.deadPeer != "" {
+					n.RoutingTable.Remove(sr.deadPeer)
+				}
+				continue
+			}
+
+			// Gossip: merge piggybacked color nodes into local palette.
+			for _, cn := range sr.colorNodes {
+				n.palette.Add(cn)
+			}
+
+			if sr.isNeeded {
+				neededNodes = append(neededNodes, sr.fromPeer)
+			}
+
+			if sr.found && !valueFound {
+				foundValue, valueFound = sr.value, true
+				cancelRound()
+				continue
+			}
+
+			if !valueFound {
+				for _, p := range sr.peers {
+					if p.Id != n.id {
+						n.addContact(p.Id, p.Addr)
+						newPeers = append(newPeers, p)
+					}
+				}
+			}
+		}
+		cancelRound()
+		return newPeers, foundValue, valueFound
+	})
+
+	// Cache admission: fire-and-forget STORE_CACHE to every node that signalled IsNeeded.
+	if found {
+		for _, ni := range neededNodes {
+			n.transport.SendAsync(n.newStoreCacheMsg(ni.Addr, key, value))
+		}
+	}
+
+	return value, found, hops
+}
+
+func hasPeer(peers []rt.PeerInfo, id pid.PeerID) bool {
+	for _, p := range peers {
+		if p.Id == id {
+			return true
+		}
+	}
+	return false
 }
 
 // iterativeLookup runs the Kademlia iterative lookup loop.

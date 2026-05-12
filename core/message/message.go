@@ -34,7 +34,12 @@ type Message struct {
 }
 
 type FindNodeBody struct{ TargetID string }
-type FindValueBody struct{ TargetID string }
+
+type FindValueBody struct {
+	TargetID string
+	Bitmap   uint64 // Shades: bitmask of colors the sender already has in its palette
+}
+
 type StoreBody struct{ Key, Value string }
 type StoreCacheBody struct{ Key, Value string }
 
@@ -45,4 +50,8 @@ type FindNodeResponse struct {
 type FindValueResponse struct {
 	Value   string
 	Nearest []rt.PeerInfo
+
+	// Shades fields — zero values are safe for non-Shades nodes
+	IsNeeded   bool          // true if this node wants to cache the value
+	ColorNodes []rt.PeerInfo // peers to merge into the requester's palette
 }

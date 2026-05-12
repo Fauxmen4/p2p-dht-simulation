@@ -9,6 +9,7 @@ import (
 	"my-kad-dht/core/metrics"
 	rt "my-kad-dht/core/table"
 	"my-kad-dht/pkg/rtt"
+	cache "my-kad-dht/pkg/shades-cache"
 	strg "my-kad-dht/pkg/storage"
 	"sync"
 	"time"
@@ -51,35 +52,26 @@ type Node struct {
 	KVStorage storage
 	Metrics   *metrics.Storage
 
+	palette    *rt.Palette // Shades: color-keyed routing table (nil if Shades disabled)
+	shadeCache *cache.ShadeCache // Shades: TinyLFU-admitted cache (nil if Shades disabled)
+
 	cancel context.CancelFunc
 }
 
 func NewNode(id pid.PeerID, addr addr.Addr, cfg cfg.Kademlia, t Transport) *Node {
-	node := &Node{
-		id:           id,
-		addr:         addr,
-		RoutingTable: rt.NewRoutingTable(id, cfg),
-		kad:          cfg,
-		transport:    t,
-		inputCh:      make(chan *msg.Message),
-		pending:      make(map[msg.MsgID]chan *msg.Message),
-		KVStorage:    strg.New(),
-		Metrics:      metrics.NewStorage(),
+	node := DefaultNode()
+	node.id = id
+	node.addr = addr
+	node.RoutingTable = rt.NewRoutingTable(id, cfg)
+	node.kad = cfg
+	node.transport = t
+
+	if cfg.Shades.Colors > 0 {
+		node.palette = rt.NewPalette(id, uint8(cfg.Shades.Colors))
+		node.shadeCache = cache.NewShadeCache(cfg.Shades.CacheSize)
 	}
 
 	return node
-}
-
-func (n *Node) ID() pid.PeerID {
-	return n.id
-}
-
-func (n *Node) Addr() addr.Addr {
-	return n.addr
-}
-
-func (n *Node) InputCh() chan *msg.Message {
-	return n.inputCh
 }
 
 func (n *Node) sendRPC(ctx context.Context, to addr.Addr, m *msg.Message) (*msg.Message, error) {
@@ -131,4 +123,25 @@ func (n *Node) addContact(id pid.PeerID, address addr.Addr) {
 			n.RoutingTable.ReplaceIfDead(lrs.Id, id, address)
 		}
 	}(id, address)
+}
+
+func DefaultNode() *Node {
+	return &Node{
+		inputCh:   make(chan *msg.Message),
+		pending:   make(map[msg.MsgID]chan *msg.Message),
+		KVStorage: strg.New(),
+		Metrics:   metrics.NewStorage(),
+	}
+}
+
+func (n *Node) ID() pid.PeerID {
+	return n.id
+}
+
+func (n *Node) Addr() addr.Addr {
+	return n.addr
+}
+
+func (n *Node) InputCh() chan *msg.Message {
+	return n.inputCh
 }

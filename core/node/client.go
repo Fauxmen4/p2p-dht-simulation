@@ -81,7 +81,18 @@ func (n *Node) ValueLookup(ctx context.Context, key string) (string, bool) {
 		return val, true
 	}
 	start := time.Now()
-	value, ok, hops := n.keyLookup(ctx, string(hKey))
+
+	var (
+		value string
+		ok bool
+		hops int
+	)
+	if n.shadeCache != nil {
+		value, ok, hops = n.shadesKeyLookup(ctx, string(hKey))
+	} else {
+		value, ok, hops = n.keyLookup(ctx, string(hKey))
+	}
+
 	n.Metrics.NewSearch(key, hops, ok, time.Since(start))
 	return value, ok
 }
@@ -115,13 +126,28 @@ func (n *Node) newFindNodeMsg(to addr.Addr, targetID pid.PeerID) *msg.Message {
 }
 
 func (n *Node) newFindValueMsg(to addr.Addr, targetID pid.PeerID) *msg.Message {
+	body := &msg.FindValueBody{TargetID: string(targetID)}
+	if n.palette != nil {
+		body.Bitmap = n.palette.Bitmask()
+	}
 	return &msg.Message{
 		ID:     msg.MsgID(uuid.NewString()),
 		Type:   msg.FindValueType,
 		To:     to,
 		From:   n.addr,
 		FromID: n.id,
-		Body:   &msg.FindValueBody{TargetID: string(targetID)},
+		Body:   body,
+	}
+}
+
+func (n *Node) newStoreCacheMsg(to addr.Addr, key, value string) *msg.Message {
+	return &msg.Message{
+		ID:     msg.MsgID(uuid.NewString()),
+		Type:   msg.StoreCacheType,
+		To:     to,
+		From:   n.addr,
+		FromID: n.id,
+		Body:   &msg.StoreCacheBody{Key: key, Value: value},
 	}
 }
 
