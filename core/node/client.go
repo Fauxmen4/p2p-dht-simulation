@@ -88,7 +88,7 @@ func (n *Node) ValueLookup(ctx context.Context, key string) (string, bool) {
 		hops int
 	)
 	if n.shadeCache != nil {
-		value, ok, hops = n.shadesKeyLookup(ctx, key)
+		value, ok, hops = n.shadesKeyLookup(ctx, string(hKey))
 	} else {
 		value, ok, hops = n.keyLookup(ctx, string(hKey))
 	}
